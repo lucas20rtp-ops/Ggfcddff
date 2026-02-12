@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국어 TTS 립싱크 - 그린스크린</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            padding: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .canvas-container {
+            background: rgba(42, 42, 42, 0.8);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        #greenscreenCanvas {
+            display: block;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 255, 0, 0.4);
+            border: 3px solid rgba(0, 255, 0, 0.3);
+        }
+
+        .canvas-info {
+            margin-top: 15px;
+            text-align: center;
+            color: #00ff88;
+            font-size: 15px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 35px;
+            border-radius: 25px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .controls h2 {
+            margin: 0 0 25px 0;
+            color: #1a1a2e;
+            font-size: 28px;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 6px;
+            transition: all 0.3s;
+            font-weight: 700;
+            width: calc(50% - 12px);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 255, 136, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .full-button {
+            width: 100% !important;
+            margin: 6px 0 !important;
+        }
+
+        .recording-btn {
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+        }
+
+        .recording-btn.recording {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4444 100%);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .audio-recording-btn {
+            background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+            box-shadow: 0 4px 15px rgba(255, 149, 0, 0.3);
+        }
+
+        .audio-recording-btn.recording {
+            background: linear-gradient(135deg, #ffaa33 0%, #ff9500 100%);
+            animation: pulse-orange 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3); }
+            50% { box-shadow: 0 4px 25px rgba(255, 68, 68, 0.6); }
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% { box-shadow: 0 4px 15px rgba(255, 149, 0, 0.3); }
+            50% { box-shadow: 0 4px 25px rgba(255, 149, 0, 0.6); }
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .status.speaking {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+
+        .status.idle {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .status.recording {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+
+        .status.audio-recording {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+        }
+
+        .info {
+            padding: 15px;
+            background: linear-gradient(135deg, #e7f3ff 0%, #dae9f7 100%);
+            border-radius: 12px;
+            font-size: 13px;
+            color: #004085;
+            line-height: 1.8;
+            border-left: 4px solid #0066cc;
+        }
+
+        .info strong {
+            color: #003366;
+        }
+
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .color-picker label {
+            font-size: 15px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .color-picker input[type="color"] {
+            width: 70px;
+            height: 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .slider-container {
+            margin: 12px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.4);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.4);
+        }
+
+        .audio-visualizer {
+            width: 100%;
+            height: 60px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .audio-visualizer canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .file-upload {
+            margin-top: 12px;
+        }
+
+        .file-upload input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #00ff88;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            background: rgba(0, 255, 136, 0.05);
+            transition: all 0.3s;
+        }
+
+        .file-upload input[type="file"]:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00cc6a;
+        }
+
+        .grid-settings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .grid-settings label {
+            font-size: 14px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .grid-settings input {
+            margin-top: 6px;
+        }
+
+        .preview-grid {
+            display: grid;
+            gap: 8px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 12px;
+            max-height: 280px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+        }
+
+        .preview-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .preview-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .preview-grid::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 4px;
+        }
+
+        .preview-mouth {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            background: white;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .preview-mouth:hover {
+            border-color: #00ff88;
+            transform: scale(1.05);
+        }
+
+        .preview-mouth.selected {
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+        }
+
+        .mouth-label {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .phoneme-mapping {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 12px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .phoneme-mapping h4 {
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .phoneme-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            gap: 12px;
+        }
+
+        .phoneme-item select {
+            flex: 1;
+            padding: 8px;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .phoneme-item label {
+            min-width: 100px;
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .preset-btn {
+            width: auto !important;
+            padding: 10px 20px !important;
+            font-size: 14px !important;
+        }
+
+        .speed-control {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .speed-btn {
+            flex: 1;
+            padding: 8px !important;
+            font-size: 13px !important;
+            width: auto !important;
+            margin: 0 !important;
+        }
+
+        .speed-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="greenscreenCanvas" width="800" height="600"></canvas>
+            <div class="canvas-info">🎬 준비 완료</div>
+        </div>
+
+        <div class="controls">
+            <h2>🎤 한국어 TTS 립싱크</h2>
+
+            <div class="section">
+                <h3>🖼️ 입 모양 이미지</h3>
+                <div class="file-upload">
+                    <input type="file" id="mouthImageUpload" accept="image/*" onchange="loadMouthImage(event)">
+                </div>
+                <div class="grid-settings">
+                    <label>
+                        열 (가로):
+                        <input type="number" id="gridCols" min="1" max="10" value="4" onchange="updateGrid()">
+                    </label>
+                    <label>
+                        행 (세로):
+                        <input type="number" id="gridRows" min="1" max="10" value="5" onchange="updateGrid()">
+                    </label>
+                </div>
+                <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+            </div>
+
+            <div class="section" id="phonemeMappingSection" style="display:none;">
+                <h3>🗣️ 발음 매핑</h3>
+                <div class="phoneme-mapping" id="phonemeMapping"></div>
+            </div>
+
+            <div class="section">
+                <h3>💬 대사</h3>
+                <textarea id="textInput" placeholder="말할 텍스트를 입력하세요...">안녕하세요! 오늘 날씨가 참 좋네요. 발음에 따라 입 모양이 바뀝니다.</textarea>
+            </div>
+
+            <div class="section">
+                <h3>🔊 음성</h3>
+                <select id="voiceSelect">
+                    <option value="">음성 로딩 중...</option>
+                </select>
+                <button onclick="loadVoices(); alert('음성 목록을 새로고침했습니다!');" class="full-button" style="background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); padding: 10px; font-size: 14px; margin-top: 8px;">🔄 음성 새로고침</button>
+                <div class="speed-control">
+                    <button class="speed-btn" onclick="setSpeed(0.8)">느리게</button>
+                    <button class="speed-btn active" onclick="setSpeed(1.0)">보통</button>
+                    <button class="speed-btn" onclick="setSpeed(1.2)">빠르게</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🎙️ 음성 녹음</h3>
+                <div class="button-row">
+                    <button id="audioRecordBtn" class="audio-recording-btn full-button" onclick="toggleAudioRecording()">
+                        🎤 음성 녹음 시작
+                    </button>
+                </div>
+                <div id="audioVisualizer" class="audio-visualizer" style="display: none;">
+                    <canvas id="visualizerCanvas"></canvas>
+                </div>
+                <div class="info" style="margin-top: 10px;">
+                    <strong>💡 사용법:</strong> 음성 녹음 버튼을 눌러 마이크로 말한 후, 중지하면 자동으로 텍스트로 변환됩니다.
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🎨 배경</h3>
+                <div class="color-picker">
+                    <label>배경색:</label>
+                    <input type="color" id="bgColor" value="#00ff00">
+                    <button class="preset-btn" onclick="setPresetColor('#00ff00')">🟢 그린</button>
+                    <button class="preset-btn" onclick="setPresetColor('#0000ff')" style="background: linear-gradient(135deg, #0066ff 0%, #0044cc 100%);">🔵 블루</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📏 크기</h3>
+                <div class="slider-container">
+                    <label>입 크기: <span id="sizeValue">2.0</span>x</label>
+                    <input type="range" id="mouthSize" min="0.5" max="4" step="0.1" value="2.0" oninput="updateMouthSize()">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>▶️ 재생</h3>
+                <div class="button-row">
+                    <button id="speakBtn" onclick="speak()">🗣️ 말하기</button>
+                    <button id="stopBtn" onclick="stop()" disabled>⏹️ 정지</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🎥 녹화</h3>
+                <button id="recordBtn" class="recording-btn full-button" onclick="toggleRecording()">⏺️ 녹화 시작</button>
+                <button id="downloadBtn" class="download-btn full-button" onclick="downloadVideo()" disabled style="display:none;">💾 영상 다운로드</button>
+            </div>
+
+            <div id="status" class="status idle">입 모양 이미지를 업로드하세요</div>
+
+            <div class="info">
+                <strong>💡 사용 방법:</strong><br>
+                1️⃣ 입 모양 스프라이트 시트 업로드<br>
+                2️⃣ 격자 크기 설정 (자동 분할)<br>
+                3️⃣ 발음별 입 모양 자동 매핑<br>
+                4️⃣ <strong>한국어 음성 선택</strong> (중요!)<br>
+                5️⃣ 대사 입력 후 말하기!<br>
+                <br>
+                <strong>⌨️ 단축키:</strong> Ctrl+Enter = 말하기<br>
+                <br>
+                <strong>🔊 TTS 참고:</strong><br>
+                • 브라우저마다 지원하는 음성이 다릅니다<br>
+                • Chrome/Edge는 한국어 음성 지원 우수<br>
+                • 음성이 안 들리면 '음성 새로고침' 클릭<br>
+                • F12 콘솔에서 디버그 정보 확인 가능
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('greenscreenCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let synth = window.speechSynthesis;
+        let utterance = null;
+        let voices = [];
+        let speechRate = 1.0;
+        let mouthScale = 2.0;
+        
+        let mouthSpriteSheet = null;
+        let mouthFrames = [];
+        let currentMouthIndex = 0;
+        let rows = 5;
+        let cols = 4;
+        
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        let isSpeaking = false;
+        let animationInterval = null;
+
+        // 오디오 녹음 관련 변수
+        let isAudioRecording = false;
+        let audioRecorder = null;
+        let audioChunks = [];
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let animationFrameId = null;
+
+        // 발음 매핑 (인덱스 기반) - 더 정확한 매핑
+        let phonemeMap = {
+            'rest': 0,          // 쉬는 상태 (입 닫힘)
+            'a': 4,             // ㅏ, ㅑ (크게 벌린 입)
+            'ae': 5,            // ㅐ, ㅒ (약간 벌린 입)
+            'eo': 6,            // ㅓ, ㅕ (중간 벌린 입)
+            'e': 7,             // ㅔ, ㅖ (작게 벌린 입)
+            'o': 8,             // ㅗ, ㅛ (둥근 입 작게)
+            'u': 9,             // ㅜ, ㅠ (둥근 입 크게)
+            'eu': 10,           // ㅡ (옆으로 벌린)
+            'i': 11,            // ㅣ (옆으로 좁게)
+            'b_p_m': 12,        // ㅂ, ㅃ, ㅍ, ㅁ (입 다문)
+            'n': 13,            // ㄴ, ㄹ (혀 위치)
+            's': 14,            // ㅅ, ㅆ (이 살짝 보임)
+            't_d': 15,          // ㅌ, ㄷ, ㄸ (혀 앞)
+            'g_k': 16,          // ㄱ, ㄲ, ㅋ (목 발음)
+            'j': 17,            // ㅈ, ㅉ, ㅊ (입술 앞)
+            'h': 18,            // ㅎ (크게 벌림)
+            'ng': 19            // ㅇ (목 발음)
+        };
+
+        // 한글 자모 분해
+        function decomposeHangul(char) {
+            const code = char.charCodeAt(0);
+            if (code < 0xAC00 || code > 0xD7A3) return null;
+            
+            const syllableIndex = code - 0xAC00;
+            const jongIndex = syllableIndex % 28;
+            const jungIndex = Math.floor((syllableIndex - jongIndex) / 28) % 21;
+            const choIndex = Math.floor((syllableIndex - jongIndex) / 28 / 21);
+            
+            const cho = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+            const jung = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+            const jong = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+            
+            return {
+                cho: cho[choIndex],
+                jung: jung[jungIndex],
+                jong: jong[jongIndex]
+            };
+        }
+
+        // 자모에서 발음 추출 - 더 세밀하게
+        function getPhonemeFromJamo(jamo, isJong = false) {
+            // 모음
+            const vowelMap = {
+                'ㅏ': 'a', 'ㅑ': 'a',           // 크게 벌린 아
+                'ㅐ': 'ae', 'ㅒ': 'ae',         // 약간 벌린 애
+                'ㅓ': 'eo', 'ㅕ': 'eo',         // 중간 벌린 어
+                'ㅔ': 'e', 'ㅖ': 'e',           // 작게 벌린 에
+                'ㅗ': 'o', 'ㅛ': 'o',           // 둥근 입 작게 오
+                'ㅘ': 'o', 'ㅙ': 'ae', 'ㅚ': 'o',
+                'ㅜ': 'u', 'ㅠ': 'u',           // 둥근 입 크게 우
+                'ㅝ': 'u', 'ㅞ': 'e', 'ㅟ': 'u',
+                'ㅡ': 'eu',                      // 옆으로 벌린 으
+                'ㅢ': 'eu',
+                'ㅣ': 'i'                        // 옆으로 좁게 이
+            };
+            
+            // 자음 (초성)
+            const consonantMap = {
+                'ㅂ': 'b_p_m', 'ㅃ': 'b_p_m', 'ㅍ': 'b_p_m',
+                'ㅁ': 'b_p_m',
+                'ㄴ': 'n', 'ㄹ': 'n',
+                'ㅅ': 's', 'ㅆ': 's',
+                'ㅌ': 't_d', 'ㄷ': 't_d', 'ㄸ': 't_d',
+                'ㄱ': 'g_k', 'ㄲ': 'g_k', 'ㅋ': 'g_k',
+                'ㅈ': 'j', 'ㅉ': 'j', 'ㅊ': 'j',
+                'ㅎ': 'h',
+                'ㅇ': isJong ? 'ng' : null  // 초성 ㅇ은 무음
+            };
+            
+            // 종성 자음 (받침)
+            const jongConsonantMap = {
+                'ㄱ': 'g_k', 'ㄲ': 'g_k', 'ㄳ': 'g_k',
+                'ㄴ': 'n', 'ㄵ': 'n', 'ㄶ': 'n',
+                'ㄷ': 't_d', 'ㄹ': 'n',
+                'ㄺ': 'g_k', 'ㄻ': 'b_p_m', 'ㄼ': 'b_p_m',
+                'ㄽ': 's', 'ㄾ': 't_d', 'ㄿ': 'b_p_m', 'ㅀ': 'n',
+                'ㅁ': 'b_p_m',
+                'ㅂ': 'b_p_m', 'ㅄ': 'b_p_m',
+                'ㅅ': 't_d', 'ㅆ': 't_d',
+                'ㅇ': 'ng',
+                'ㅈ': 't_d', 'ㅊ': 't_d',
+                'ㅋ': 'g_k', 'ㅌ': 't_d', 'ㅍ': 'b_p_m', 'ㅎ': 't_d'
+            };
+            
+            if (vowelMap[jamo]) return vowelMap[jamo];
+            if (isJong && jongConsonantMap[jamo]) return jongConsonantMap[jamo];
+            if (consonantMap[jamo]) return consonantMap[jamo];
+            
+            return 'rest';
+        }
+
+        // 텍스트를 발음 시퀀스로 변환 - 더 자연스럽게
+        function textToPhonemes(text) {
+            const phonemes = [];
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                // 공백과 구두점
+                if (char === ' ') {
+                    phonemes.push({ phoneme: 'rest', duration: 150 });
+                    continue;
+                } else if (char === ',' || char === '.') {
+                    phonemes.push({ phoneme: 'rest', duration: 250 });
+                    continue;
+                } else if (char === '!' || char === '?') {
+                    phonemes.push({ phoneme: 'rest', duration: 300 });
+                    continue;
+                }
+                
+                const decomposed = decomposeHangul(char);
+                if (!decomposed) {
+                    phonemes.push({ phoneme: 'rest', duration: 100 });
+                    continue;
+                }
+                
+                // 초성 (자음)
+                if (decomposed.cho && decomposed.cho !== 'ㅇ') {
+                    const choPhoneme = getPhonemeFromJamo(decomposed.cho, false);
+                    if (choPhoneme) {
+                        phonemes.push({
+                            phoneme: choPhoneme,
+                            duration: 60  // 자음은 짧게
+                        });
+                    }
+                }
+                
+                // 중성 (모음) - 가장 중요, 길게
+                const jungPhoneme = getPhonemeFromJamo(decomposed.jung, false);
+                phonemes.push({
+                    phoneme: jungPhoneme,
+                    duration: 180  // 모음은 길게
+                });
+                
+                // 종성 (받침)
+                if (decomposed.jong) {
+                    const jongPhoneme = getPhonemeFromJamo(decomposed.jong, true);
+                    if (jongPhoneme) {
+                        // 다음 글자가 있고 초성이 ㅇ이면 연음
+                        const nextChar = text[i + 1];
+                        const nextDecomposed = nextChar ? decomposeHangul(nextChar) : null;
+                        
+                        if (nextDecomposed && nextDecomposed.cho === 'ㅇ') {
+                            // 연음 - 종성을 짧게 하고 다음 음절로 이어짐
+                            phonemes.push({
+                                phoneme: jongPhoneme,
+                                duration: 40
+                            });
+                        } else {
+                            // 일반 종성
+                            phonemes.push({
+                                phoneme: jongPhoneme,
+                                duration: 80
+                            });
+                        }
+                    }
+                }
+                
+                // 음절 사이 미세한 간격
+                if (i < text.length - 1 && text[i + 1] !== ' ') {
+                    phonemes.push({ phoneme: 'rest', duration: 20 });
+                }
+            }
+            
+            return phonemes;
+        }
+
+        // 립싱크 애니메이션
+        function animateLipSync(text) {
+            const phonemeSequence = textToPhonemes(text);
+            let index = 0;
+            
+            function nextPhoneme() {
+                if (!isSpeaking || index >= phonemeSequence.length) {
+                    currentMouthIndex = phonemeMap['rest'];
+                    drawCurrentMouth();
+                    return;
+                }
+                
+                const { phoneme, duration } = phonemeSequence[index];
+                currentMouthIndex = phonemeMap[phoneme] || phonemeMap['rest'];
+                drawCurrentMouth();
+                
+                index++;
+                animationInterval = setTimeout(nextPhoneme, duration / speechRate);
+            }
+            
+            nextPhoneme();
+        }
+
+        function loadMouthImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    mouthSpriteSheet = img;
+                    updateGrid();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateGrid() {
+            rows = parseInt(document.getElementById('gridRows').value);
+            cols = parseInt(document.getElementById('gridCols').value);
+            
+            if (mouthSpriteSheet) {
+                extractMouthFrames();
+                displayPreviewGrid();
+                displayPhonemeMapping();
+                drawCurrentMouth();
+                updateStatus('✅ 준비 완료! 말하기를 시작하세요.', 'idle');
+            }
+        }
+
+        // 이미지에서 실제 입이 있는 영역 감지
+        function detectMouthBounds(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            let minX = canvas.width;
+            let minY = canvas.height;
+            let maxX = 0;
+            let maxY = 0;
+            
+            // 투명하지 않은 픽셀 찾기
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const idx = (y * canvas.width + x) * 4;
+                    const alpha = data[idx + 3];
+                    
+                    // 완전 투명하지 않고, 흰색이 아닌 픽셀 (실제 입 부분)
+                    if (alpha > 10) {
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        
+                        // 거의 흰색이 아닌 경우만 (입 부분)
+                        if (r < 240 || g < 240 || b < 240) {
+                            minX = Math.min(minX, x);
+                            minY = Math.min(minY, y);
+                            maxX = Math.max(maxX, x);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+            }
+            
+            // 유효한 영역을 찾지 못한 경우 전체 영역 반환
+            if (minX >= maxX || minY >= maxY) {
+                return { x: 0, y: 0, width: canvas.width, height: canvas.height };
+            }
+            
+            // 약간의 패딩 추가
+            const padding = 5;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = Math.min(canvas.width, maxX + padding);
+            maxY = Math.min(canvas.height, maxY + padding);
+            
+            return {
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY,
+                centerX: (minX + maxX) / 2,
+                centerY: (minY + maxY) / 2
+            };
+        }
+
+        function extractMouthFrames() {
+            if (!mouthSpriteSheet) return;
+            
+            mouthFrames = [];
+            const frameWidth = mouthSpriteSheet.width / cols;
+            const frameHeight = mouthSpriteSheet.height / rows;
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = frameWidth;
+                    tempCanvas.height = frameHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    tempCtx.drawImage(
+                        mouthSpriteSheet,
+                        col * frameWidth,
+                        row * frameHeight,
+                        frameWidth,
+                        frameHeight,
+                        0, 0,
+                        frameWidth,
+                        frameHeight
+                    );
+                    
+                    // 입 영역 감지
+                    const bounds = detectMouthBounds(tempCanvas);
+                    
+                    mouthFrames.push({
+                        canvas: tempCanvas,
+                        bounds: bounds
+                    });
+                }
+            }
+        }
+
+        function displayPreviewGrid() {
+            const previewGrid = document.getElementById('previewGrid');
+            previewGrid.innerHTML = '';
+            previewGrid.style.display = 'grid';
+            previewGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            
+            mouthFrames.forEach((frame, index) => {
+                const container = document.createElement('div');
+                container.style.position = 'relative';
+                
+                const img = document.createElement('img');
+                img.src = frame.canvas.toDataURL();
+                img.className = 'preview-mouth';
+                if (index === currentMouthIndex) {
+                    img.classList.add('selected');
+                }
+                img.onclick = () => {
+                    document.querySelectorAll('.preview-mouth').forEach(m => m.classList.remove('selected'));
+                    img.classList.add('selected');
+                    currentMouthIndex = index;
+                    drawCurrentMouth();
+                };
+                
+                const label = document.createElement('div');
+                label.className = 'mouth-label';
+                label.textContent = index;
+                
+                container.appendChild(img);
+                container.appendChild(label);
+                previewGrid.appendChild(container);
+            });
+        }
+
+        function displayPhonemeMapping() {
+            const section = document.getElementById('phonemeMappingSection');
+            const mapping = document.getElementById('phonemeMapping');
+            section.style.display = 'block';
+            
+            const labels = {
+                'rest': '😌 쉬는 상태 (입 닫힘)',
+                'a': '😮 ㅏ/ㅑ (크게 벌림)',
+                'ae': '😃 ㅐ/ㅒ (약간 벌림)',
+                'eo': '😯 ㅓ/ㅕ (중간 벌림)',
+                'e': '🙂 ㅔ/ㅖ (작게 벌림)',
+                'o': '😗 ㅗ/ㅛ (둥근 작게)',
+                'u': '😙 ㅜ/ㅠ (둥근 크게)',
+                'eu': '😬 ㅡ (옆으로)',
+                'i': '😁 ㅣ (좁게)',
+                'b_p_m': '🤐 ㅂ/ㅃ/ㅍ/ㅁ',
+                'n': '😛 ㄴ/ㄹ',
+                's': '😬 ㅅ/ㅆ',
+                't_d': '😑 ㅌ/ㄷ/ㄸ',
+                'g_k': '😮 ㄱ/ㄲ/ㅋ',
+                'j': '😏 ㅈ/ㅉ/ㅊ',
+                'h': '😲 ㅎ (크게)',
+                'ng': '😮 ㅇ (받침)'
+            };
+            
+            mapping.innerHTML = '<h4>🎯 발음별 입 모양 (세밀 설정):</h4>';
+            
+            for (let [key, label] of Object.entries(labels)) {
+                const item = document.createElement('div');
+                item.className = 'phoneme-item';
+                
+                const labelEl = document.createElement('label');
+                labelEl.textContent = label;
+                
+                const select = document.createElement('select');
+                for (let i = 0; i < mouthFrames.length; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `입모양 ${i}`;
+                    if (i === phonemeMap[key]) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                }
+                select.onchange = (e) => {
+                    phonemeMap[key] = parseInt(e.target.value);
+                };
+                
+                item.appendChild(labelEl);
+                item.appendChild(select);
+                mapping.appendChild(item);
+            }
+        }
+
+        function drawCurrentMouth() {
+            if (mouthFrames.length === 0) {
+                const bgColor = document.getElementById('bgColor').value;
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            
+            const bgColor = document.getElementById('bgColor').value;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const frameData = mouthFrames[currentMouthIndex];
+            const frame = frameData.canvas;
+            const bounds = frameData.bounds;
+            const scale = mouthScale;
+            
+            // 입 영역의 중심을 캔버스 중앙에 배치
+            const scaledWidth = bounds.width * scale;
+            const scaledHeight = bounds.height * scale;
+            
+            // 입의 중심점을 캔버스 중심으로
+            const destX = (canvas.width / 2) - (bounds.centerX * scale);
+            const destY = (canvas.height / 2) - (bounds.centerY * scale);
+            
+            // 전체 프레임을 그리되, 입의 중심이 캔버스 중심에 오도록
+            ctx.drawImage(
+                frame,
+                destX,
+                destY,
+                frame.width * scale,
+                frame.height * scale
+            );
+        }
+
+        function updateMouthSize() {
+            const slider = document.getElementById('mouthSize');
+            mouthScale = parseFloat(slider.value);
+            document.getElementById('sizeValue').textContent = mouthScale.toFixed(1);
+            drawCurrentMouth();
+        }
+
+        function setPresetColor(color) {
+            document.getElementById('bgColor').value = color;
+            drawCurrentMouth();
+        }
+
+        function setSpeed(speed) {
+            speechRate = speed;
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        document.getElementById('bgColor').addEventListener('input', drawCurrentMouth);
+
+        function loadVoices() {
+            voices = synth.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            
+            // 한국어 음성 필터링 (ko-KR, ko_KR, ko 포함)
+            const koreanVoices = voices.filter(v => 
+                v.lang.toLowerCase().includes('ko') || 
+                v.name.toLowerCase().includes('korean') ||
+                v.name.toLowerCase().includes('한국')
+            );
+            const otherVoices = voices.filter(v => 
+                !v.lang.toLowerCase().includes('ko') && 
+                !v.name.toLowerCase().includes('korean') &&
+                !v.name.toLowerCase().includes('한국')
+            );
+            
+            if (koreanVoices.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = '🇰🇷 한국어 음성';
+                koreanVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.default || voice.localService) {
+                        option.textContent += ' ⭐';
+                    }
+                    group.appendChild(option);
+                });
+                voiceSelect.appendChild(group);
+                
+                // 첫 번째 한국어 음성을 기본으로 선택
+                voiceSelect.value = voices.indexOf(koreanVoices[0]);
+            } else {
+                // 한국어 음성이 없는 경우 안내 메시지
+                const option = document.createElement('option');
+                option.textContent = '⚠️ 한국어 음성을 찾을 수 없습니다';
+                option.disabled = true;
+                voiceSelect.appendChild(option);
+            }
+            
+            if (otherVoices.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = '🌐 기타 언어';
+                otherVoices.slice(0, 10).forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    group.appendChild(option);
+                });
+                voiceSelect.appendChild(group);
+            }
+            
+            // 디버그: 사용 가능한 음성 출력
+            console.log('사용 가능한 음성:', voices.length + '개');
+            console.log('한국어 음성:', koreanVoices.length + '개');
+            if (koreanVoices.length > 0) {
+                console.log('선택된 한국어 음성:', koreanVoices[0].name);
+            }
+        }
+
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = loadVoices;
+        }
+        
+        // 초기 로드
+        loadVoices();
+        
+        // 1초 후 재시도 (일부 브라우저에서 필요)
+        setTimeout(() => {
+            if (voices.length === 0) {
+                console.log('음성 재로드 시도...');
+                loadVoices();
+            }
+        }, 1000);
+        
+        // 3초 후 최종 재시도
+        setTimeout(() => {
+            if (voices.length === 0) {
+                console.log('최종 음성 로드 시도...');
+                voices = synth.getVoices();
+                loadVoices();
+            }
+        }, 3000);
+
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            if (mouthFrames.length === 0) {
+                alert('먼저 입 모양 이미지를 업로드해주세요!');
+                return;
+            }
+            
+            try {
+                const stream = canvas.captureStream(30);
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: 8000000
+                });
+                
+                recordedChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.style.display = 'block';
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `lipsync_${Date.now()}.webm`;
+                        a.click();
+                    };
+                    
+                    updateStatus('✅ 녹화 완료! 영상을 다운로드하세요.', 'idle');
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '⏹️ 녹화 중지';
+                recordBtn.classList.add('recording');
+                
+                updateStatus('🔴 녹화 중...', 'recording');
+                
+            } catch (error) {
+                console.error('녹화 실패:', error);
+                alert('녹화를 시작할 수 없습니다.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '⏺️ 녹화 시작';
+                recordBtn.classList.remove('recording');
+            }
+        }
+
+        function speak() {
+            if (mouthFrames.length === 0) {
+                alert('먼저 입 모양 이미지를 업로드해주세요!');
+                return;
+            }
+            
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (!text) {
+                alert('텍스트를 입력해주세요!');
+                return;
+            }
+
+            stop();
+
+            // 음성 다시 로드 (일부 브라우저에서 필요)
+            if (voices.length === 0) {
+                voices = synth.getVoices();
+            }
+
+            utterance = new SpeechSynthesisUtterance(text);
+            
+            // 선택된 음성 적용
+            const selectedVoiceIndex = document.getElementById('voiceSelect').value;
+            if (selectedVoiceIndex !== '' && voices[selectedVoiceIndex]) {
+                utterance.voice = voices[selectedVoiceIndex];
+                console.log('사용 중인 음성:', voices[selectedVoiceIndex].name);
+            } else {
+                // 음성이 선택되지 않은 경우 한국어 음성 찾기
+                const koreanVoice = voices.find(v => 
+                    v.lang.toLowerCase().includes('ko') || 
+                    v.name.toLowerCase().includes('korean')
+                );
+                if (koreanVoice) {
+                    utterance.voice = koreanVoice;
+                    console.log('자동 선택된 한국어 음성:', koreanVoice.name);
+                }
+            }
+            
+            // 한국어 설정 강제
+            utterance.lang = 'ko-KR';
+            utterance.rate = speechRate;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                updateStatus('🗣️ 말하는 중...', 'speaking');
+                document.getElementById('speakBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                
+                console.log('TTS 시작:', {
+                    text: text.substring(0, 20) + '...',
+                    voice: utterance.voice ? utterance.voice.name : '기본',
+                    lang: utterance.lang,
+                    rate: utterance.rate
+                });
+                
+                animateLipSync(text);
+            };
+
+            utterance.onend = () => {
+                console.log('TTS 완료');
+                isSpeaking = false;
+                setTimeout(() => {
+                    stop();
+                    if (isRecording) {
+                        setTimeout(() => stopRecording(), 500);
+                    }
+                }, 300);
+            };
+
+            utterance.onerror = (event) => {
+                console.error('TTS 오류:', event);
+                console.error('오류 상세:', {
+                    error: event.error,
+                    message: event.message,
+                    voice: utterance.voice ? utterance.voice.name : 'none'
+                });
+                
+                stop();
+                
+                let errorMsg = '음성 재생 중 오류가 발생했습니다.';
+                if (event.error === 'network') {
+                    errorMsg += '\n인터넷 연결을 확인해주세요.';
+                } else if (event.error === 'synthesis-failed') {
+                    errorMsg += '\n다른 음성을 선택해보세요.';
+                } else if (event.error === 'not-allowed') {
+                    errorMsg += '\n브라우저에서 음성 재생을 허용해주세요.';
+                }
+                alert(errorMsg);
+            };
+
+            // TTS 시작
+            try {
+                synth.speak(utterance);
+                console.log('synth.speak() 호출 완료');
+            } catch (e) {
+                console.error('synth.speak() 오류:', e);
+                alert('음성 재생을 시작할 수 없습니다: ' + e.message);
+                stop();
+            }
+        }
+
+        function stop() {
+            synth.cancel();
+            isSpeaking = false;
+            
+            if (animationInterval) {
+                clearTimeout(animationInterval);
+                animationInterval = null;
+            }
+            
+            currentMouthIndex = phonemeMap['rest'];
+            drawCurrentMouth();
+            
+            updateStatus('대기 중...', 'idle');
+            document.getElementById('speakBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        function updateStatus(message, className) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${className}`;
+        }
+
+        document.getElementById('textInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                speak();
+            }
+        });
+
+        // 오디오 녹음 기능
+        async function toggleAudioRecording() {
+            if (!isAudioRecording) {
+                await startAudioRecording();
+            } else {
+                stopAudioRecording();
+            }
+        }
+
+        async function startAudioRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                audioRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                audioRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                audioRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await processAudioToText(audioBlob);
+                    
+                    // 스트림 정지
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                // 오디오 시각화 설정
+                audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                document.getElementById('audioVisualizer').style.display = 'block';
+                drawVisualizer();
+                
+                audioRecorder.start();
+                isAudioRecording = true;
+                
+                const recordBtn = document.getElementById('audioRecordBtn');
+                recordBtn.textContent = '⏹️ 녹음 중지';
+                recordBtn.classList.add('recording');
+                
+                updateStatus('🎤 음성 녹음 중...', 'audio-recording');
+                
+            } catch (error) {
+                console.error('마이크 접근 실패:', error);
+                alert('마이크에 접근할 수 없습니다. 브라우저 설정을 확인해주세요.');
+            }
+        }
+
+        function stopAudioRecording() {
+            if (audioRecorder && isAudioRecording) {
+                audioRecorder.stop();
+                isAudioRecording = false;
+                
+                const recordBtn = document.getElementById('audioRecordBtn');
+                recordBtn.textContent = '🎤 음성 녹음 시작';
+                recordBtn.classList.remove('recording');
+                
+                document.getElementById('audioVisualizer').style.display = 'none';
+                
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                
+                if (audioContext) {
+                    audioContext.close();
+                }
+                
+                updateStatus('🔄 음성을 텍스트로 변환 중...', 'idle');
+            }
+        }
+
+        function drawVisualizer() {
+            const visualizerCanvas = document.getElementById('visualizerCanvas');
+            const canvasCtx = visualizerCanvas.getContext('2d');
+            
+            visualizerCanvas.width = visualizerCanvas.offsetWidth;
+            visualizerCanvas.height = visualizerCanvas.offsetHeight;
+            
+            function draw() {
+                if (!isAudioRecording) return;
+                
+                animationFrameId = requestAnimationFrame(draw);
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                canvasCtx.fillStyle = '#f0f0f0';
+                canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+                
+                const barWidth = (visualizerCanvas.width / dataArray.length) * 2.5;
+                let x = 0;
+                
+                for (let i = 0; i < dataArray.length; i++) {
+                    const barHeight = (dataArray[i] / 255) * visualizerCanvas.height;
+                    
+                    const gradient = canvasCtx.createLinearGradient(0, 0, 0, visualizerCanvas.height);
+                    gradient.addColorStop(0, '#ff9500');
+                    gradient.addColorStop(1, '#ff6b00');
+                    
+                    canvasCtx.fillStyle = gradient;
+                    canvasCtx.fillRect(x, visualizerCanvas.height - barHeight, barWidth, barHeight);
+                    
+                    x += barWidth + 1;
+                }
+            }
+            
+            draw();
+        }
+
+        async function processAudioToText(audioBlob) {
+            try {
+                // Web Speech API의 SpeechRecognition 사용
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'ko-KR';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                // 오디오를 재생하면서 인식
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('textInput').value = transcript;
+                    updateStatus('✅ 음성이 텍스트로 변환되었습니다!', 'idle');
+                    console.log('인식된 텍스트:', transcript);
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('음성 인식 오류:', event.error);
+                    updateStatus('❌ 음성 인식 실패. 브라우저가 음성 인식을 지원하는지 확인해주세요.', 'idle');
+                };
+                
+                recognition.start();
+                audio.play();
+                
+            } catch (error) {
+                console.error('음성 처리 오류:', error);
+                updateStatus('❌ 음성 처리 중 오류가 발생했습니다.', 'idle');
+            }
+        }
+
+        // 초기 캔버스
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    </script>
+</body>
+</html>
