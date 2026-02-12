@@ -1,0 +1,2905 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국어/영어 TTS 립싱크 - 그린스크린 (무음 감지)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            padding: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .canvas-container {
+            background: rgba(42, 42, 42, 0.8);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        #greenscreenCanvas {
+            display: block;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 255, 0, 0.4);
+            border: 3px solid rgba(0, 255, 0, 0.3);
+        }
+
+        .canvas-info {
+            margin-top: 15px;
+            text-align: center;
+            color: #00ff88;
+            font-size: 15px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 35px;
+            border-radius: 25px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .controls h2 {
+            margin: 0 0 25px 0;
+            color: #1a1a2e;
+            font-size: 28px;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 6px;
+            transition: all 0.3s;
+            font-weight: 700;
+            width: calc(50% - 12px);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 255, 136, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .full-button {
+            width: 100% !important;
+            margin: 6px 0 !important;
+        }
+
+        .recording-btn {
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+        }
+
+        .recording-btn.recording {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4444 100%);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3); }
+            50% { box-shadow: 0 4px 25px rgba(255, 68, 68, 0.6); }
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .status.speaking {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+
+        .status.idle {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .status.recording {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+
+        .info {
+            padding: 15px;
+            background: linear-gradient(135deg, #e7f3ff 0%, #dae9f7 100%);
+            border-radius: 12px;
+            font-size: 13px;
+            color: #004085;
+            line-height: 1.8;
+            border-left: 4px solid #0066cc;
+        }
+
+        .info strong {
+            color: #003366;
+        }
+
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .color-picker label {
+            font-size: 15px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .color-picker input[type="color"] {
+            width: 70px;
+            height: 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .slider-container {
+            margin: 12px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.4);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.4);
+        }
+
+        .file-upload {
+            margin-top: 12px;
+        }
+
+        .file-upload input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #00ff88;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            background: rgba(0, 255, 136, 0.05);
+            transition: all 0.3s;
+        }
+
+        .file-upload input[type="file"]:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00cc6a;
+        }
+
+        .grid-settings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .grid-settings label {
+            font-size: 14px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .grid-settings input {
+            margin-top: 6px;
+        }
+
+        .preview-grid {
+            display: grid;
+            gap: 8px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 12px;
+            max-height: 280px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+        }
+
+        .preview-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .preview-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .preview-grid::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 4px;
+        }
+
+        .preview-mouth {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            background: white;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .preview-mouth:hover {
+            border-color: #00ff88;
+            transform: scale(1.05);
+        }
+
+        .preview-mouth.selected {
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+        }
+
+        .mouth-label {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .phoneme-mapping {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 12px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .phoneme-mapping h4 {
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .phoneme-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            gap: 12px;
+        }
+
+        .phoneme-item select {
+            flex: 1;
+            padding: 8px;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .phoneme-item label {
+            min-width: 100px;
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .preset-btn {
+            width: auto !important;
+            padding: 10px 20px !important;
+            font-size: 14px !important;
+        }
+
+        .speed-control {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .speed-btn {
+            flex: 1;
+            padding: 8px !important;
+            font-size: 13px !important;
+            width: auto !important;
+            margin: 0 !important;
+        }
+
+        .speed-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .lang-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .lang-btn {
+            flex: 1;
+            padding: 10px !important;
+            font-size: 14px !important;
+            width: auto !important;
+            margin: 0 !important;
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="greenscreenCanvas" width="800" height="600"></canvas>
+            <div class="canvas-info">🎬 준비 완료</div>
+        </div>
+
+        <div class="controls">
+            <h2>🎤 한국어/영어 TTS 립싱크</h2>
+
+            <div class="section">
+                <h3>🖼️ 입 모양 이미지</h3>
+                <div class="file-upload">
+                    <input type="file" id="mouthImageUpload" accept="image/*" onchange="loadMouthImage(event)">
+                </div>
+                <div class="grid-settings">
+                    <label>
+                        열 (가로):
+                        <input type="number" id="gridCols" min="1" max="10" value="4" onchange="updateGrid()">
+                    </label>
+                    <label>
+                        행 (세로):
+                        <input type="number" id="gridRows" min="1" max="10" value="5" onchange="updateGrid()">
+                    </label>
+                </div>
+                <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+            </div>
+
+            <div class="section" id="phonemeMappingSection" style="display:none;">
+                <h3>🗣️ 발음 매핑</h3>
+                <div class="lang-toggle">
+                    <button class="lang-btn active" onclick="switchLanguage('korean')">🇰🇷 한국어</button>
+                    <button class="lang-btn" onclick="switchLanguage('english')">🇺🇸 영어</button>
+                </div>
+                <div class="phoneme-mapping" id="phonemeMappingKorean"></div>
+                <div class="phoneme-mapping" id="phonemeMappingEnglish" style="display:none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>🎵 오디오 소스</h3>
+                <div class="lang-toggle">
+                    <button class="lang-btn active" onclick="switchAudioMode('tts')">🗣️ TTS 음성</button>
+                    <button class="lang-btn" onclick="switchAudioMode('upload')">📁 오디오 업로드</button>
+                </div>
+                
+                <div id="ttsMode">
+                    <div style="margin-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #555;">💬 대사</h4>
+                        <textarea id="textInput" placeholder="한국어나 영어 텍스트를 입력하세요...">안녕하세요! Hello World! 한국어와 영어를 자동으로 인식합니다.</textarea>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #555;">🎙️ TTS 엔진</h4>
+                        <div class="lang-toggle">
+                            <button class="lang-btn active" onclick="switchTTSEngine('browser')">🌐 브라우저 TTS</button>
+                            <button class="lang-btn" onclick="switchTTSEngine('google')">🇬 Google Cloud</button>
+                        </div>
+                    </div>
+                    
+                    <div id="browserTTSSettings">
+                        <div style="margin-top: 15px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #555;">🔊 음성</h4>
+                            <select id="voiceSelect">
+                                <option value="">음성 로딩 중...</option>
+                            </select>
+                            <button onclick="loadVoices(); alert('음성 목록을 새로고침했습니다!');" class="full-button" style="background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); padding: 10px; font-size: 14px; margin-top: 8px;">🔄 음성 새로고침</button>
+                        </div>
+                    </div>
+                    
+                    <div id="googleTTSSettings" style="display: none;">
+                        <div style="margin-top: 15px; padding: 10px; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #0891b2;">
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: #0e7490; margin-bottom: 6px;">
+                                🔑 Google Cloud TTS API Key
+                            </label>
+                            <input type="password" id="googleTTSApiKey" placeholder="AIzaSy..." style="width: 100%; padding: 8px; border: 1px solid #bae6fd; border-radius: 6px; font-size: 13px;">
+                            <div style="font-size: 11px; color: #0369a1; margin-top: 4px;">
+                                고품질 한국어 TTS 지원. 무료 할당량: 월 400만자
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #555;">🔊 한국어 음성</h4>
+                            <select id="googleVoiceSelect" style="width: 100%; padding: 10px; border-radius: 8px;">
+                                <option value="ko-KR-Standard-A">ko-KR-Standard-A (여성)</option>
+                                <option value="ko-KR-Standard-B">ko-KR-Standard-B (여성)</option>
+                                <option value="ko-KR-Standard-C">ko-KR-Standard-C (남성)</option>
+                                <option value="ko-KR-Standard-D">ko-KR-Standard-D (남성)</option>
+                                <option value="ko-KR-Wavenet-A">ko-KR-Wavenet-A (여성, 고품질) ⭐</option>
+                                <option value="ko-KR-Wavenet-B">ko-KR-Wavenet-B (여성, 고품질) ⭐</option>
+                                <option value="ko-KR-Wavenet-C">ko-KR-Wavenet-C (남성, 고품질) ⭐</option>
+                                <option value="ko-KR-Wavenet-D">ko-KR-Wavenet-D (남성, 고품질) ⭐</option>
+                                <option value="ko-KR-Neural2-A">ko-KR-Neural2-A (여성, 최고품질) 🌟</option>
+                                <option value="ko-KR-Neural2-B">ko-KR-Neural2-B (여성, 최고품질) 🌟</option>
+                                <option value="ko-KR-Neural2-C">ko-KR-Neural2-C (남성, 최고품질) 🌟</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="uploadMode" style="display: none;">
+                    <div style="margin-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #555;">🎵 오디오 파일</h4>
+                        <div class="file-upload">
+                            <input type="file" id="audioUpload" accept="audio/*" onchange="loadAudioFile(event)">
+                        </div>
+                        <div id="audioInfo" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 8px; font-size: 13px; display: none;">
+                            <strong>파일:</strong> <span id="audioFileName">-</span><br>
+                            <strong>길이:</strong> <span id="audioDuration">-</span>초
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #555;">💬 대사 (립싱크용)</h4>
+                        <textarea id="textInputUpload" placeholder="립싱크를 위한 텍스트를 입력하세요..."></textarea>
+                        
+                        <div style="margin-top: 12px; padding: 10px; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #0891b2;">
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: #0e7490; margin-bottom: 6px;">
+                                🔑 AssemblyAI API Key (음성인식용)
+                            </label>
+                            <input type="password" id="assemblyApiKey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" style="width: 100%; padding: 8px; border: 1px solid #bae6fd; border-radius: 6px; font-size: 13px;">
+                            <div style="font-size: 11px; color: #0369a1; margin-top: 4px;">
+                                선택사항. API 키 입력 시 AssemblyAI로 정확한 음성인식 가능 (무료: 5시간/월)
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="transcribeWithAssembly()" class="preset-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1;">
+                                🎤 AssemblyAI 음성인식
+                            </button>
+                            <button onclick="estimateFromAudio()" class="preset-btn" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); flex: 1;">
+                                🤖 음량 분석
+                            </button>
+                        </div>
+                        <div id="transcriptionStatus" style="margin-top: 8px; padding: 8px; background: #e7f3ff; border-radius: 6px; font-size: 12px; display: none;">
+                            <span id="transcriptionText">대기 중...</span>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 12px; color: #666; line-height: 1.6;">
+                            🎤 <strong>AssemblyAI:</strong> 정확한 음성인식, 무료 5시간/월 (API 키 필요)<br>
+                            🤖 <strong>음량 분석:</strong> 음량 패턴으로 텍스트 추정 (API 키 불필요)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>⚙️ 설정</h3>
+                <div class="speed-control">
+                    <button class="speed-btn" onclick="setSpeed(0.8)">느리게</button>
+                    <button class="speed-btn active" onclick="setSpeed(1.0)">보통</button>
+                    <button class="speed-btn" onclick="setSpeed(1.2)">빠르게</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🎨 배경</h3>
+                <div class="color-picker">
+                    <label>배경색:</label>
+                    <input type="color" id="bgColor" value="#00ff00">
+                    <button class="preset-btn" onclick="setPresetColor('#00ff00')">🟢 그린</button>
+                    <button class="preset-btn" onclick="setPresetColor('#0000ff')" style="background: linear-gradient(135deg, #0066ff 0%, #0044cc 100%);">🔵 블루</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📏 크기</h3>
+                <div class="slider-container">
+                    <label>입 크기: <span id="sizeValue">2.0</span>x</label>
+                    <input type="range" id="mouthSize" min="0.5" max="4" step="0.1" value="2.0" oninput="updateMouthSize()">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🔇 무음 감지</h3>
+                <div class="slider-container">
+                    <label>민감도: <span id="silenceValue">25</span> (낮을수록 민감)</label>
+                    <input type="range" id="silenceThresholdSlider" min="10" max="50" step="5" value="25" oninput="updateSilenceThreshold()">
+                </div>
+                <div class="info" style="margin-top: 10px; font-size: 12px;">
+                    오디오 재생 시 무음 구간을 감지하여<br>자동으로 입을 닫습니다
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>▶️ 재생</h3>
+                <div class="button-row">
+                    <button id="speakBtn" onclick="speak()">🗣️ 말하기</button>
+                    <button id="stopBtn" onclick="stop()" disabled>⏹️ 정지</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🎥 녹화</h3>
+                <button id="recordBtn" class="recording-btn full-button" onclick="toggleRecording()">⏺️ 녹화 시작</button>
+                <button id="downloadBtn" class="download-btn full-button" onclick="downloadVideo()" disabled style="display:none;">💾 영상 다운로드</button>
+            </div>
+
+            <div id="status" class="status idle">입 모양 이미지를 업로드하세요</div>
+
+            <div class="info">
+                <strong>💡 사용 방법:</strong><br>
+                1️⃣ 입 모양 스프라이트 시트 업로드<br>
+                2️⃣ 격자 크기 설정 (자동 분할)<br>
+                3️⃣ 한국어/영어 발음별 입 모양 매핑<br>
+                4️⃣ <strong>오디오 소스 선택:</strong><br>
+                &nbsp;&nbsp;&nbsp;• TTS 음성: 텍스트 입력 후 자동 음성 생성<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- 브라우저 TTS (무료, 한국어 제한적)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Google Cloud TTS (고품질 한국어) ⭐<br>
+                &nbsp;&nbsp;&nbsp;• 오디오 업로드: MP3/WAV 파일 업로드<br>
+                5️⃣ 말하기 버튼 클릭!<br>
+                <br>
+                <strong>🎙️ Google Cloud TTS (권장):</strong><br>
+                • <strong>고품질 한국어 음성</strong> - 자연스러운 발음<br>
+                • Standard, Wavenet, Neural2 음성 지원<br>
+                • 무료 할당량: 월 400만자 (충분함!)<br>
+                • API 키 발급: https://console.cloud.google.com<br>
+                &nbsp;&nbsp;1. Text-to-Speech API 활성화<br>
+                &nbsp;&nbsp;2. API 키 생성<br>
+                &nbsp;&nbsp;3. 위 입력란에 붙여넣기<br>
+                <br>
+                <strong>🎵 오디오 업로드 모드:</strong><br>
+                • <strong>AssemblyAI:</strong> 정확한 음성인식, 무료 5시간/월 (API 키 필요)<br>
+                • <strong>음량 분석:</strong> 음량 패턴으로 텍스트 추정 (무료)<br>
+                • <strong>수동 입력:</strong> 직접 텍스트 입력 (가장 정확)<br>
+                <br>
+                <strong>🔇 무음 감지:</strong><br>
+                • 오디오 재생 중 실시간으로 무음 구간 감지<br>
+                • 무음일 때 자동으로 입을 닫아 자연스러운 립싱크<br>
+                • 민감도 조절로 감지 정확도 조정 가능<br>
+                <br>
+                <strong>🔑 AssemblyAI API 키 발급:</strong><br>
+                • https://www.assemblyai.com/dashboard 접속<br>
+                • 회원가입 (무료)<br>
+                • Dashboard에서 API Key 복사<br>
+                • 무료 플랜: 월 5시간 (충분함!)<br>
+                <br>
+                <strong>🌏 다국어 지원:</strong><br>
+                • 한국어와 영어를 자동으로 감지<br>
+                • 각 언어에 맞는 립싱크 적용<br>
+                <br>
+                <strong>⌨️ 단축키:</strong> Ctrl+Enter = 말하기
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('greenscreenCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let synth = window.speechSynthesis;
+        let utterance = null;
+        let voices = [];
+        let speechRate = 1.0;
+        let mouthScale = 2.0;
+        
+        let mouthSpriteSheet = null;
+        let mouthFrames = [];
+        let currentMouthIndex = 0;
+        let rows = 5;
+        let cols = 4;
+        
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        let isSpeaking = false;
+        let animationInterval = null;
+        let currentMappingLanguage = 'korean';
+        let audioMode = 'tts'; // 'tts' or 'upload'
+        let ttsEngine = 'browser'; // 'browser' or 'google'
+        let uploadedAudio = null;
+        let audioContext = null;
+        let audioSource = null; // 오디오 소스를 재사용하기 위해 저장
+        
+        // 실시간 음성 분석을 위한 변수들
+        let analyser = null;
+        let microphone = null;
+        let silenceThreshold = 25; // 무음 판정 기준 (0-100, 낮을수록 민감)
+        let lastSoundTime = 0;
+        let silenceDelay = 150; // 무음으로 판정되기까지의 지연시간 (ms)
+        let audioMonitorInterval = null;
+
+        // 한국어 발음 매핑
+        let phonemeMapKorean = {
+            'rest': 0,
+            'a': 4,
+            'ae': 5,
+            'eo': 6,
+            'e': 7,
+            'o': 8,
+            'u': 9,
+            'eu': 10,
+            'i': 11,
+            'b_p_m': 12,
+            'n': 13,
+            's': 14,
+            't_d': 15,
+            'g_k': 16,
+            'j': 17,
+            'h': 18,
+            'ng': 19
+        };
+
+        // 영어 발음 매핑 (Viseme based)
+        let phonemeMapEnglish = {
+            'rest': 0,           // Silence
+            'AA': 4,             // f AA ther (큰 입)
+            'AE': 5,             // c AE t (약간 벌린)
+            'AH': 6,             // b UH t (중간)
+            'AO': 8,             // d OG (둥근 입)
+            'AW': 4,             // d OW n (큰 입)
+            'AY': 5,             // h I de (약간 벌린)
+            'EH': 7,             // b E d (작게 벌린)
+            'ER': 6,             // h ER (중간)
+            'EY': 7,             // s AY (작게 벌린)
+            'IH': 11,            // s I t (좁게)
+            'IY': 11,            // s EE (이)
+            'OW': 8,             // b OA t (둥근)
+            'OY': 8,             // b OY (둥근)
+            'UH': 9,             // b OO k (둥근 크게)
+            'UW': 9,             // f OO d (우)
+            'B': 12,             // B (입 다문)
+            'P': 12,             // P (입 다문)
+            'M': 12,             // M (입 다문)
+            'F': 14,             // F (이 보임)
+            'V': 14,             // V (이 보임)
+            'TH': 14,            // TH (이 보임)
+            'DH': 14,            // THE (이 보임)
+            'S': 14,             // S (이 보임)
+            'Z': 14,             // Z (이 보임)
+            'SH': 17,            // SH (입술 앞)
+            'ZH': 17,            // mea S ure (입술 앞)
+            'CH': 17,            // CH (입술 앞)
+            'JH': 17,            // J (입술 앞)
+            'T': 15,             // T (혀 앞)
+            'D': 15,             // D (혀 앞)
+            'N': 13,             // N (혀 위치)
+            'L': 13,             // L (혀 위치)
+            'R': 6,              // R (중간)
+            'K': 16,             // K (목)
+            'G': 16,             // G (목)
+            'NG': 19,            // si NG (목)
+            'H': 18,             // H (크게)
+            'W': 9,              // W (둥근)
+            'Y': 11              // Y (좁게)
+        };
+
+        // 현재 사용할 매핑
+        let currentPhonemeMap = phonemeMapKorean;
+
+        // 한국어 자모 분해
+        function decomposeHangul(char) {
+            const code = char.charCodeAt(0);
+            if (code < 0xAC00 || code > 0xD7A3) return null;
+            
+            const syllableIndex = code - 0xAC00;
+            const jongIndex = syllableIndex % 28;
+            const jungIndex = Math.floor((syllableIndex - jongIndex) / 28) % 21;
+            const choIndex = Math.floor((syllableIndex - jongIndex) / 28 / 21);
+            
+            const cho = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+            const jung = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+            const jong = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+            
+            return {
+                cho: cho[choIndex],
+                jung: jung[jungIndex],
+                jong: jong[jongIndex]
+            };
+        }
+
+        // 한국어 자모에서 발음 추출
+        function getPhonemeFromJamo(jamo, isJong = false) {
+            const vowelMap = {
+                'ㅏ': 'a', 'ㅑ': 'a',
+                'ㅐ': 'ae', 'ㅒ': 'ae',
+                'ㅓ': 'eo', 'ㅕ': 'eo',
+                'ㅔ': 'e', 'ㅖ': 'e',
+                'ㅗ': 'o', 'ㅛ': 'o',
+                'ㅘ': 'o', 'ㅙ': 'ae', 'ㅚ': 'o',
+                'ㅜ': 'u', 'ㅠ': 'u',
+                'ㅝ': 'u', 'ㅞ': 'e', 'ㅟ': 'u',
+                'ㅡ': 'eu',
+                'ㅢ': 'eu',
+                'ㅣ': 'i'
+            };
+            
+            const consonantMap = {
+                'ㅂ': 'b_p_m', 'ㅃ': 'b_p_m', 'ㅍ': 'b_p_m',
+                'ㅁ': 'b_p_m',
+                'ㄴ': 'n', 'ㄹ': 'n',
+                'ㅅ': 's', 'ㅆ': 's',
+                'ㅌ': 't_d', 'ㄷ': 't_d', 'ㄸ': 't_d',
+                'ㄱ': 'g_k', 'ㄲ': 'g_k', 'ㅋ': 'g_k',
+                'ㅈ': 'j', 'ㅉ': 'j', 'ㅊ': 'j',
+                'ㅎ': 'h',
+                'ㅇ': isJong ? 'ng' : null
+            };
+            
+            const jongConsonantMap = {
+                'ㄱ': 'g_k', 'ㄲ': 'g_k', 'ㄳ': 'g_k',
+                'ㄴ': 'n', 'ㄵ': 'n', 'ㄶ': 'n',
+                'ㄷ': 't_d', 'ㄹ': 'n',
+                'ㄺ': 'g_k', 'ㄻ': 'b_p_m', 'ㄼ': 'b_p_m',
+                'ㄽ': 's', 'ㄾ': 't_d', 'ㄿ': 'b_p_m', 'ㅀ': 'n',
+                'ㅁ': 'b_p_m',
+                'ㅂ': 'b_p_m', 'ㅄ': 'b_p_m',
+                'ㅅ': 't_d', 'ㅆ': 't_d',
+                'ㅇ': 'ng',
+                'ㅈ': 't_d', 'ㅊ': 't_d',
+                'ㅋ': 'g_k', 'ㅌ': 't_d', 'ㅍ': 'b_p_m', 'ㅎ': 't_d'
+            };
+            
+            if (vowelMap[jamo]) return vowelMap[jamo];
+            if (isJong && jongConsonantMap[jamo]) return jongConsonantMap[jamo];
+            if (consonantMap[jamo]) return consonantMap[jamo];
+            
+            return 'rest';
+        }
+
+        // 영어 문자에서 발음 추출 (간단한 규칙 기반)
+        function getEnglishPhoneme(char, nextChar = null) {
+            char = char.toLowerCase();
+            
+            // 모음
+            const vowels = {
+                'a': 'AE', 'e': 'EH', 'i': 'IH', 'o': 'OW', 'u': 'UH'
+            };
+            
+            // 자음
+            const consonants = {
+                'b': 'B', 'p': 'P', 'm': 'M',
+                'f': 'F', 'v': 'V',
+                's': 'S', 'z': 'Z',
+                't': 'T', 'd': 'D',
+                'n': 'N', 'l': 'L', 'r': 'R',
+                'k': 'K', 'c': 'K', 'g': 'G',
+                'h': 'H', 'w': 'W', 'y': 'Y',
+                'j': 'JH', 'q': 'K', 'x': 'K'
+            };
+            
+            // 특수 조합
+            if (char === 's' && nextChar === 'h') return 'SH';
+            if (char === 'c' && nextChar === 'h') return 'CH';
+            if (char === 't' && nextChar === 'h') return 'TH';
+            
+            if (vowels[char]) return vowels[char];
+            if (consonants[char]) return consonants[char];
+            
+            return 'rest';
+        }
+
+        // 텍스트가 한국어인지 영어인지 감지
+        function detectLanguage(text) {
+            const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
+            const englishRegex = /[a-zA-Z]/;
+            
+            const hasKorean = koreanRegex.test(text);
+            const hasEnglish = englishRegex.test(text);
+            
+            // 한국어가 더 많으면 한국어로 처리
+            const koreanCount = (text.match(koreanRegex) || []).length;
+            const englishCount = (text.match(englishRegex) || []).length;
+            
+            return koreanCount > englishCount ? 'korean' : 'english';
+        }
+
+        // 한국어 텍스트를 발음 시퀀스로 변환
+        function koreanTextToPhonemes(text) {
+            const phonemes = [];
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                if (char === ' ') {
+                    phonemes.push({ phoneme: 'rest', duration: 150, map: phonemeMapKorean });
+                    continue;
+                } else if (char === ',' || char === '.') {
+                    phonemes.push({ phoneme: 'rest', duration: 250, map: phonemeMapKorean });
+                    continue;
+                } else if (char === '!' || char === '?') {
+                    phonemes.push({ phoneme: 'rest', duration: 300, map: phonemeMapKorean });
+                    continue;
+                }
+                
+                const decomposed = decomposeHangul(char);
+                if (!decomposed) {
+                    phonemes.push({ phoneme: 'rest', duration: 100, map: phonemeMapKorean });
+                    continue;
+                }
+                
+                // 초성 + 중성 + 종성을 하나의 음절로 처리
+                let syllablePhonemes = [];
+                
+                if (decomposed.cho && decomposed.cho !== 'ㅇ') {
+                    const choPhoneme = getPhonemeFromJamo(decomposed.cho, false);
+                    if (choPhoneme) {
+                        syllablePhonemes.push({
+                            phoneme: choPhoneme,
+                            duration: 60,
+                            map: phonemeMapKorean
+                        });
+                    }
+                }
+                
+                const jungPhoneme = getPhonemeFromJamo(decomposed.jung, false);
+                syllablePhonemes.push({
+                    phoneme: jungPhoneme,
+                    duration: 180,
+                    map: phonemeMapKorean
+                });
+                
+                if (decomposed.jong) {
+                    const jongPhoneme = getPhonemeFromJamo(decomposed.jong, true);
+                    if (jongPhoneme) {
+                        const nextChar = text[i + 1];
+                        const nextDecomposed = nextChar ? decomposeHangul(nextChar) : null;
+                        
+                        if (nextDecomposed && nextDecomposed.cho === 'ㅇ') {
+                            syllablePhonemes.push({
+                                phoneme: jongPhoneme,
+                                duration: 40,
+                                map: phonemeMapKorean
+                            });
+                        } else {
+                            syllablePhonemes.push({
+                                phoneme: jongPhoneme,
+                                duration: 80,
+                                map: phonemeMapKorean
+                            });
+                        }
+                    }
+                }
+                
+                // 음절의 모든 발음 추가
+                phonemes.push(...syllablePhonemes);
+                
+                // 음절 사이 미세한 간격 (같은 글자가 반복될 때는 추가하지 않음)
+                if (i < text.length - 1 && text[i + 1] !== ' ' && text[i] !== text[i + 1]) {
+                    phonemes.push({ phoneme: 'rest', duration: 20, map: phonemeMapKorean });
+                }
+            }
+            
+            return phonemes;
+        }
+
+        // 영어 텍스트를 발음 시퀀스로 변환
+        function englishTextToPhonemes(text) {
+            const phonemes = [];
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (char === ' ') {
+                    phonemes.push({ phoneme: 'rest', duration: 120, map: phonemeMapEnglish });
+                    continue;
+                } else if (char === ',' || char === '.') {
+                    phonemes.push({ phoneme: 'rest', duration: 200, map: phonemeMapEnglish });
+                    continue;
+                } else if (char === '!' || char === '?') {
+                    phonemes.push({ phoneme: 'rest', duration: 250, map: phonemeMapEnglish });
+                    continue;
+                } else if (!/[a-zA-Z]/.test(char)) {
+                    phonemes.push({ phoneme: 'rest', duration: 80, map: phonemeMapEnglish });
+                    continue;
+                }
+                
+                const phoneme = getEnglishPhoneme(char, nextChar);
+                
+                // sh, ch, th 같은 조합 처리
+                if ((char === 's' || char === 'c' || char === 't') && nextChar === 'h') {
+                    phonemes.push({
+                        phoneme: phoneme,
+                        duration: 140,
+                        map: phonemeMapEnglish
+                    });
+                    i++; // 다음 'h' 건너뛰기
+                    continue;
+                }
+                
+                // 모음은 길게, 자음은 짧게
+                const isVowel = 'aeiouAEIOU'.includes(char);
+                phonemes.push({
+                    phoneme: phoneme,
+                    duration: isVowel ? 150 : 80,
+                    map: phonemeMapEnglish
+                });
+            }
+            
+            return phonemes;
+        }
+
+        // 혼합 텍스트를 발음 시퀀스로 변환
+        function textToPhonemes(text) {
+            const phonemes = [];
+            let currentSegment = '';
+            let currentLang = null;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const isKorean = /[\uAC00-\uD7AF]/.test(char);
+                const isEnglish = /[a-zA-Z]/.test(char);
+                
+                if (isKorean) {
+                    if (currentLang === 'english' && currentSegment) {
+                        phonemes.push(...englishTextToPhonemes(currentSegment));
+                        currentSegment = '';
+                    }
+                    currentLang = 'korean';
+                    currentSegment += char;
+                } else if (isEnglish) {
+                    if (currentLang === 'korean' && currentSegment) {
+                        phonemes.push(...koreanTextToPhonemes(currentSegment));
+                        currentSegment = '';
+                    }
+                    currentLang = 'english';
+                    currentSegment += char;
+                } else {
+                    if (currentSegment) {
+                        if (currentLang === 'korean') {
+                            phonemes.push(...koreanTextToPhonemes(currentSegment));
+                        } else if (currentLang === 'english') {
+                            phonemes.push(...englishTextToPhonemes(currentSegment));
+                        }
+                        currentSegment = '';
+                    }
+                    
+                    // 공백이나 구두점 처리 (쉬는 구간을 더 길게)
+                    if (char === ' ') {
+                        phonemes.push({ phoneme: 'rest', duration: 300, map: phonemeMapKorean });
+                    } else if (char === ',') {
+                        phonemes.push({ phoneme: 'rest', duration: 500, map: phonemeMapKorean });
+                    } else if (char === '.') {
+                        phonemes.push({ phoneme: 'rest', duration: 600, map: phonemeMapKorean });
+                    } else if (char === '!' || char === '?') {
+                        phonemes.push({ phoneme: 'rest', duration: 700, map: phonemeMapKorean });
+                    } else if (char === '\n') {
+                        // 줄바꿈은 더 긴 휴지 구간
+                        phonemes.push({ phoneme: 'rest', duration: 800, map: phonemeMapKorean });
+                    }
+                    currentLang = null;
+                }
+            }
+            
+            // 남은 세그먼트 처리
+            if (currentSegment) {
+                if (currentLang === 'korean') {
+                    phonemes.push(...koreanTextToPhonemes(currentSegment));
+                } else if (currentLang === 'english') {
+                    phonemes.push(...englishTextToPhonemes(currentSegment));
+                }
+            }
+            
+            return phonemes;
+        }
+
+        // 립싱크 애니메이션
+        function animateLipSync(text) {
+            const phonemeSequence = textToPhonemes(text);
+            let index = 0;
+            
+            console.log('립싱크 시작, 총', phonemeSequence.length, '개 발음');
+            
+            function nextPhoneme() {
+                if (!isSpeaking || index >= phonemeSequence.length) {
+                    currentMouthIndex = phonemeMapKorean['rest'];
+                    drawCurrentMouth();
+                    return;
+                }
+                
+                const { phoneme, duration, map } = phonemeSequence[index];
+                currentMouthIndex = map[phoneme] || map['rest'];
+                drawCurrentMouth();
+                
+                index++;
+                
+                // 다음 발음도 같은 phoneme이면 duration을 합산하여 같은 입 모양 유지
+                let totalDuration = duration;
+                while (index < phonemeSequence.length && 
+                       phonemeSequence[index].phoneme === phoneme &&
+                       phonemeSequence[index].map === map) {
+                    totalDuration += phonemeSequence[index].duration;
+                    index++;
+                }
+                
+                animationInterval = setTimeout(nextPhoneme, totalDuration / speechRate);
+            }
+            
+            nextPhoneme();
+        }
+
+        function loadMouthImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    mouthSpriteSheet = img;
+                    updateGrid();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateGrid() {
+            rows = parseInt(document.getElementById('gridRows').value);
+            cols = parseInt(document.getElementById('gridCols').value);
+            
+            if (mouthSpriteSheet) {
+                extractMouthFrames();
+                displayPreviewGrid();
+                displayPhonemeMapping();
+                drawCurrentMouth();
+                updateStatus('✅ 준비 완료! 말하기를 시작하세요.', 'idle');
+            }
+        }
+
+        function detectMouthBounds(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            let minX = canvas.width;
+            let minY = canvas.height;
+            let maxX = 0;
+            let maxY = 0;
+            
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const idx = (y * canvas.width + x) * 4;
+                    const alpha = data[idx + 3];
+                    
+                    if (alpha > 10) {
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        
+                        if (r < 240 || g < 240 || b < 240) {
+                            minX = Math.min(minX, x);
+                            minY = Math.min(minY, y);
+                            maxX = Math.max(maxX, x);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+            }
+            
+            if (minX >= maxX || minY >= maxY) {
+                return { x: 0, y: 0, width: canvas.width, height: canvas.height };
+            }
+            
+            const padding = 5;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = Math.min(canvas.width, maxX + padding);
+            maxY = Math.min(canvas.height, maxY + padding);
+            
+            return {
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY,
+                centerX: (minX + maxX) / 2,
+                centerY: (minY + maxY) / 2
+            };
+        }
+
+        function extractMouthFrames() {
+            if (!mouthSpriteSheet) return;
+            
+            mouthFrames = [];
+            const frameWidth = mouthSpriteSheet.width / cols;
+            const frameHeight = mouthSpriteSheet.height / rows;
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = frameWidth;
+                    tempCanvas.height = frameHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    tempCtx.drawImage(
+                        mouthSpriteSheet,
+                        col * frameWidth,
+                        row * frameHeight,
+                        frameWidth,
+                        frameHeight,
+                        0, 0,
+                        frameWidth,
+                        frameHeight
+                    );
+                    
+                    const bounds = detectMouthBounds(tempCanvas);
+                    
+                    mouthFrames.push({
+                        canvas: tempCanvas,
+                        bounds: bounds
+                    });
+                }
+            }
+        }
+
+        function displayPreviewGrid() {
+            const previewGrid = document.getElementById('previewGrid');
+            previewGrid.innerHTML = '';
+            previewGrid.style.display = 'grid';
+            previewGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            
+            mouthFrames.forEach((frame, index) => {
+                const container = document.createElement('div');
+                container.style.position = 'relative';
+                
+                const img = document.createElement('img');
+                img.src = frame.canvas.toDataURL();
+                img.className = 'preview-mouth';
+                if (index === currentMouthIndex) {
+                    img.classList.add('selected');
+                }
+                img.onclick = () => {
+                    document.querySelectorAll('.preview-mouth').forEach(m => m.classList.remove('selected'));
+                    img.classList.add('selected');
+                    currentMouthIndex = index;
+                    drawCurrentMouth();
+                };
+                
+                const label = document.createElement('div');
+                label.className = 'mouth-label';
+                label.textContent = index;
+                
+                container.appendChild(img);
+                container.appendChild(label);
+                previewGrid.appendChild(container);
+            });
+        }
+
+        function switchLanguage(lang) {
+            currentMappingLanguage = lang;
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (lang === 'korean') {
+                document.getElementById('phonemeMappingKorean').style.display = 'block';
+                document.getElementById('phonemeMappingEnglish').style.display = 'none';
+            } else {
+                document.getElementById('phonemeMappingKorean').style.display = 'none';
+                document.getElementById('phonemeMappingEnglish').style.display = 'block';
+            }
+        }
+
+        function switchAudioMode(mode) {
+            audioMode = mode;
+            
+            const buttons = document.querySelectorAll('#uploadMode').parentElement.querySelectorAll('.lang-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (mode === 'tts') {
+                document.getElementById('ttsMode').style.display = 'block';
+                document.getElementById('uploadMode').style.display = 'none';
+                buttons[0].classList.add('active');
+            } else {
+                document.getElementById('ttsMode').style.display = 'none';
+                document.getElementById('uploadMode').style.display = 'block';
+                buttons[1].classList.add('active');
+            }
+        }
+
+        function switchTTSEngine(engine) {
+            ttsEngine = engine;
+            
+            const buttons = document.querySelectorAll('#ttsMode .lang-toggle')[0].querySelectorAll('.lang-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (engine === 'browser') {
+                document.getElementById('browserTTSSettings').style.display = 'block';
+                document.getElementById('googleTTSSettings').style.display = 'none';
+                buttons[0].classList.add('active');
+            } else {
+                document.getElementById('browserTTSSettings').style.display = 'none';
+                document.getElementById('googleTTSSettings').style.display = 'block';
+                buttons[1].classList.add('active');
+            }
+        }
+
+        // Google Cloud TTS를 사용한 음성 합성
+        async function synthesizeWithGoogleTTS(text) {
+            const apiKey = document.getElementById('googleTTSApiKey').value.trim();
+            if (!apiKey) {
+                alert('Google Cloud TTS API 키를 입력해주세요!\n\n1. https://console.cloud.google.com 접속\n2. Text-to-Speech API 활성화\n3. API Key 생성\n4. 위 입력란에 붙여넣기');
+                return null;
+            }
+            
+            const voiceName = document.getElementById('googleVoiceSelect').value;
+            const languageCode = voiceName.split('-').slice(0, 2).join('-'); // 'ko-KR'
+            
+            try {
+                updateStatus('🎙️ Google TTS 음성 생성 중...', 'speaking');
+                
+                const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: { text: text },
+                        voice: {
+                            languageCode: languageCode,
+                            name: voiceName
+                        },
+                        audioConfig: {
+                            audioEncoding: 'MP3',
+                            speakingRate: speechRate,
+                            pitch: 0.0,
+                            volumeGainDb: 0.0
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Google TTS 오류:', errorData);
+                    throw new Error(`API 오류 (${response.status}): ${errorData.error?.message || '알 수 없는 오류'}`);
+                }
+                
+                const data = await response.json();
+                
+                // Base64로 인코딩된 오디오 데이터를 Blob으로 변환
+                const audioContent = data.audioContent;
+                const audioBlob = base64ToBlob(audioContent, 'audio/mp3');
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                console.log('Google TTS 음성 생성 완료');
+                return audioUrl;
+                
+            } catch (error) {
+                console.error('Google TTS 전체 오류:', error);
+                updateStatus('❌ Google TTS 실패', 'idle');
+                alert(`Google TTS 오류: ${error.message}\n\n확인사항:\n• API 키가 올바른지 확인\n• Text-to-Speech API가 활성화되어 있는지 확인\n• 브라우저 콘솔(F12)에서 자세한 오류 확인`);
+                return null;
+            }
+        }
+
+        // Base64를 Blob으로 변환
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteArrays = [];
+            
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                const byteNumbers = new Array(slice.length);
+                
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            
+            return new Blob(byteArrays, { type: mimeType });
+        }
+
+        function switchAudioMode(mode) {
+            audioMode = mode;
+            
+            const buttons = document.querySelectorAll('#uploadMode').length > 0 ? 
+                document.querySelectorAll('.lang-toggle')[1].querySelectorAll('.lang-btn') :
+                document.querySelectorAll('.lang-toggle')[0].querySelectorAll('.lang-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (mode === 'tts') {
+                document.getElementById('ttsMode').style.display = 'block';
+                document.getElementById('uploadMode').style.display = 'none';
+            } else {
+                document.getElementById('ttsMode').style.display = 'none';
+                document.getElementById('uploadMode').style.display = 'block';
+            }
+        }
+
+        function loadAudioFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // 기존 오디오 정리
+                if (uploadedAudio) {
+                    uploadedAudio.pause();
+                    uploadedAudio = null;
+                }
+                
+                // 기존 오디오 소스 정리 (중요!)
+                if (audioSource) {
+                    try {
+                        audioSource.disconnect();
+                    } catch (e) {}
+                    audioSource = null;
+                }
+                if (analyser) {
+                    try {
+                        analyser.disconnect();
+                    } catch (e) {}
+                    analyser = null;
+                }
+                
+                uploadedAudio = new Audio(e.target.result);
+                
+                uploadedAudio.addEventListener('loadedmetadata', () => {
+                    const duration = uploadedAudio.duration;
+                    document.getElementById('audioFileName').textContent = file.name;
+                    document.getElementById('audioDuration').textContent = duration.toFixed(2);
+                    document.getElementById('audioInfo').style.display = 'block';
+                    
+                    console.log('오디오 로드 완료:', {
+                        파일: file.name,
+                        길이: duration + '초'
+                    });
+                    
+                    updateStatus('✅ 오디오 파일 로드 완료! 음성 인식을 시도하거나 직접 텍스트를 입력하세요.', 'idle');
+                });
+                
+                uploadedAudio.addEventListener('error', (e) => {
+                    console.error('오디오 로드 실패:', e);
+                    alert('오디오 파일을 로드할 수 없습니다.');
+                    updateStatus('❌ 오디오 로드 실패', 'idle');
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // AssemblyAI를 사용한 음성인식
+        async function transcribeWithAssembly() {
+            if (!uploadedAudio) {
+                alert('먼저 오디오 파일을 업로드해주세요!');
+                return;
+            }
+            
+            const apiKey = document.getElementById('assemblyApiKey').value.trim();
+            if (!apiKey) {
+                alert('AssemblyAI API 키를 입력해주세요!\n\n1. https://www.assemblyai.com/dashboard 방문\n2. API Key 복사\n3. 위 입력란에 붙여넣기');
+                return;
+            }
+            
+            const statusEl = document.getElementById('transcriptionStatus');
+            const textEl = document.getElementById('transcriptionText');
+            
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#dbeafe';
+            textEl.innerHTML = '📤 오디오 업로드 중...';
+            
+            try {
+                const audioFile = document.getElementById('audioUpload').files[0];
+                if (!audioFile) {
+                    throw new Error('오디오 파일을 찾을 수 없습니다.');
+                }
+                
+                console.log('파일 정보:', {
+                    이름: audioFile.name,
+                    크기: (audioFile.size / 1024 / 1024).toFixed(2) + 'MB',
+                    타입: audioFile.type
+                });
+                
+                // 1단계: 오디오 파일을 AssemblyAI에 업로드
+                textEl.innerHTML = '📤 오디오 업로드 중... (1/3)';
+                
+                const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
+                    method: 'POST',
+                    headers: {
+                        'authorization': apiKey,
+                        'content-type': audioFile.type || 'audio/mpeg'
+                    },
+                    body: audioFile
+                });
+                
+                console.log('업로드 응답 상태:', uploadResponse.status);
+                
+                if (!uploadResponse.ok) {
+                    const errorText = await uploadResponse.text();
+                    console.error('업로드 오류:', errorText);
+                    throw new Error(`오디오 업로드 실패 (${uploadResponse.status}): ${errorText}`);
+                }
+                
+                const uploadData = await uploadResponse.json();
+                const upload_url = uploadData.upload_url;
+                console.log('업로드 완료:', upload_url);
+                
+                // 2단계: 음성인식 요청
+                textEl.innerHTML = '🎤 음성 인식 중... (2/3)';
+                
+                const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+                    method: 'POST',
+                    headers: {
+                        'authorization': apiKey,
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        audio_url: upload_url,
+                        language_code: 'ko', // 한국어
+                        speech_models: ['universal-2'] // 필수: 음성 모델 지정
+                    })
+                });
+                
+                console.log('인식 요청 응답 상태:', transcriptResponse.status);
+                
+                if (!transcriptResponse.ok) {
+                    const errorText = await transcriptResponse.text();
+                    console.error('인식 요청 오류:', errorText);
+                    throw new Error(`음성인식 요청 실패 (${transcriptResponse.status}): ${errorText}`);
+                }
+                
+                const transcriptData = await transcriptResponse.json();
+                const id = transcriptData.id;
+                console.log('인식 작업 ID:', id);
+                
+                // 3단계: 결과 폴링
+                textEl.innerHTML = '⏳ 처리 중... (3/3)<br>조금만 기다려주세요...';
+                
+                let transcript;
+                let pollCount = 0;
+                const maxPolls = 60; // 최대 2분 대기
+                
+                while (pollCount < maxPolls) {
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기
+                    pollCount++;
+                    
+                    const pollingResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+                        headers: {
+                            'authorization': apiKey
+                        }
+                    });
+                    
+                    if (!pollingResponse.ok) {
+                        const errorText = await pollingResponse.text();
+                        console.error('폴링 오류:', errorText);
+                        throw new Error(`결과 확인 실패 (${pollingResponse.status})`);
+                    }
+                    
+                    transcript = await pollingResponse.json();
+                    console.log('처리 상태:', transcript.status);
+                    
+                    if (transcript.status === 'completed') {
+                        break;
+                    } else if (transcript.status === 'error') {
+                        throw new Error(transcript.error || '음성인식 실패');
+                    }
+                    
+                    // 진행률 표시
+                    textEl.innerHTML = `⏳ 처리 중... (3/3)<br>상태: ${transcript.status}<br>대기 시간: ${pollCount * 2}초`;
+                }
+                
+                if (pollCount >= maxPolls) {
+                    throw new Error('처리 시간 초과 (2분)');
+                }
+                
+                // 결과를 텍스트 필드에 입력
+                const recognizedText = transcript.text || '';
+                
+                if (!recognizedText) {
+                    throw new Error('인식된 텍스트가 없습니다. 오디오에 음성이 있는지 확인하세요.');
+                }
+                
+                document.getElementById('textInputUpload').value = recognizedText;
+                
+                const confidence = transcript.confidence ? (transcript.confidence * 100).toFixed(1) : 'N/A';
+                
+                statusEl.style.background = '#d1fae5';
+                textEl.innerHTML = `✅ 음성 인식 완료!<br>인식된 텍스트: ${recognizedText.length}자<br>신뢰도: ${confidence}%`;
+                
+                console.log('AssemblyAI 인식 완료:', recognizedText);
+                
+                updateStatus('✅ 음성 인식 완료!', 'idle');
+                
+            } catch (error) {
+                console.error('AssemblyAI 전체 오류:', error);
+                statusEl.style.background = '#fee2e2';
+                textEl.innerHTML = `❌ 음성 인식 실패<br>오류: ${error.message}<br><br>💡 확인사항:<br>• API 키가 올바른지 확인<br>• 오디오 파일 형식 확인 (MP3, WAV 권장)<br>• 브라우저 콘솔(F12)에서 자세한 오류 확인`;
+                updateStatus('❌ 음성 인식 실패', 'idle');
+            }
+        }
+
+        // OpenAI Whisper API를 사용한 음성인식
+        async function transcribeWithWhisper() {
+            if (!uploadedAudio) {
+                alert('먼저 오디오 파일을 업로드해주세요!');
+                return;
+            }
+            
+            const apiKey = document.getElementById('openaiApiKey').value.trim();
+            if (!apiKey) {
+                alert('OpenAI API 키를 입력해주세요!\n\n1. https://platform.openai.com/api-keys 방문\n2. API 키 생성\n3. 위 입력란에 붙여넣기');
+                return;
+            }
+            
+            const statusEl = document.getElementById('transcriptionStatus');
+            const textEl = document.getElementById('transcriptionText');
+            
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#dbeafe';
+            textEl.innerHTML = '🎤 음성 인식 중... (Whisper API)';
+            
+            try {
+                // 오디오 파일을 업로드할 수 있도록 변환
+                const audioFile = document.getElementById('audioUpload').files[0];
+                if (!audioFile) {
+                    throw new Error('오디오 파일을 찾을 수 없습니다.');
+                }
+                
+                // FormData 생성
+                const formData = new FormData();
+                formData.append('file', audioFile);
+                formData.append('model', 'whisper-1');
+                formData.append('language', 'ko'); // 한국어 우선
+                formData.append('response_format', 'text');
+                
+                // Whisper API 호출
+                const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || 'API 요청 실패');
+                }
+                
+                const transcription = await response.text();
+                
+                // 결과를 텍스트 필드에 입력
+                document.getElementById('textInputUpload').value = transcription;
+                
+                statusEl.style.background = '#d1fae5';
+                textEl.innerHTML = `✅ 음성 인식 완료!<br>인식된 텍스트: ${transcription.length}자`;
+                
+                console.log('Whisper 인식 완료:', transcription);
+                
+                updateStatus('✅ 음성 인식 완료!', 'idle');
+                
+            } catch (error) {
+                console.error('Whisper API 오류:', error);
+                statusEl.style.background = '#fee2e2';
+                textEl.innerHTML = `❌ 음성 인식 실패<br>오류: ${error.message}<br><br>💡 API 키가 올바른지 확인하세요.`;
+                updateStatus('❌ 음성 인식 실패', 'idle');
+            }
+        }
+
+        // Web Speech API를 활용한 음성 인식 (오디오 재생 + 마이크 인식)
+        async function transcribeAudio() {
+            if (!uploadedAudio) {
+                alert('먼저 오디오 파일을 업로드해주세요!');
+                return;
+            }
+
+            const statusEl = document.getElementById('transcriptionStatus');
+            const textEl = document.getElementById('transcriptionText');
+            
+            // SpeechRecognition 지원 확인
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = '#f8d7da';
+                textEl.innerHTML = `
+                    ❌ <strong>음성 인식 미지원</strong><br>
+                    이 브라우저는 Web Speech API를 지원하지 않습니다.<br>
+                    Chrome, Edge, Safari를 사용해주세요.<br>
+                    <br>
+                    <strong>대안:</strong><br>
+                    1️⃣ <strong>추정 모드</strong> 사용 (음량 기반 텍스트 생성)<br>
+                    2️⃣ 직접 텍스트 입력
+                `;
+                return;
+            }
+            
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#fff3cd';
+            textEl.innerHTML = `
+                ⚠️ <strong>음성 인식 준비</strong><br>
+                <br>
+                Web Speech API는 오디오 파일을 직접 인식할 수 없습니다.<br>
+                <br>
+                <strong>방법 1: 스피커로 재생하여 인식</strong><br>
+                1. 아래 "재생 + 인식" 버튼 클릭<br>
+                2. 마이크 권한 허용<br>
+                3. 오디오가 스피커로 재생되며 마이크로 인식됩니다<br>
+                (조용한 환경에서 사용하세요!)<br>
+                <br>
+                <strong>방법 2: 추정 모드 사용</strong><br>
+                "🔍 추정 모드" 버튼으로 음량 기반 텍스트 생성<br>
+                <br>
+                <button onclick="startPlayAndRecognize()" style="padding: 12px 24px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 10px;">
+                    🎤 재생 + 인식 시작
+                </button>
+            `;
+        }
+        
+        // 오디오 재생하면서 음성 인식
+        async function startPlayAndRecognize() {
+            const statusEl = document.getElementById('transcriptionStatus');
+            const textEl = document.getElementById('transcriptionText');
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.continuous = true;  // 연속 인식
+            recognition.interimResults = true;  // 중간 결과 표시
+            recognition.lang = 'ko-KR';  // 한국어
+            
+            let finalTranscript = '';
+            let isRecognizing = false;
+            
+            recognition.onstart = () => {
+                isRecognizing = true;
+                statusEl.style.background = '#d4edda';
+                textEl.innerHTML = `
+                    🎤 <strong>인식 중...</strong><br>
+                    오디오를 재생합니다. 마이크가 소리를 듣고 있습니다.<br>
+                    <br>
+                    <button onclick="stopPlayAndRecognize()" style="padding: 10px 20px; background: #ff4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                        ⏹️ 중지
+                    </button>
+                `;
+                
+                // 오디오 재생 시작
+                uploadedAudio.currentTime = 0;
+                uploadedAudio.play();
+            };
+            
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                // 실시간 업데이트
+                document.getElementById('textInputUpload').value = finalTranscript + interimTranscript;
+                
+                textEl.innerHTML = `
+                    🎤 <strong>인식 중...</strong><br>
+                    인식된 텍스트: ${(finalTranscript + interimTranscript).length}자<br>
+                    <br>
+                    <div style="background: white; padding: 10px; border-radius: 5px; max-height: 100px; overflow-y: auto; text-align: left; font-size: 13px;">
+                        ${finalTranscript}<span style="color: #999;">${interimTranscript}</span>
+                    </div>
+                    <br>
+                    <button onclick="stopPlayAndRecognize()" style="padding: 10px 20px; background: #ff4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                        ⏹️ 중지
+                    </button>
+                `;
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('인식 오류:', event.error);
+                uploadedAudio.pause();
+                statusEl.style.background = '#f8d7da';
+                textEl.innerHTML = `
+                    ❌ <strong>인식 실패</strong><br>
+                    오류: ${event.error}<br>
+                    <br>
+                    마이크 권한을 확인하거나 "추정 모드"를 사용하세요.
+                `;
+            };
+            
+            recognition.onend = () => {
+                if (isRecognizing) {
+                    uploadedAudio.pause();
+                    statusEl.style.background = '#d4edda';
+                    textEl.innerHTML = `
+                        ✅ <strong>인식 완료!</strong><br>
+                        총 ${finalTranscript.length}자 인식됨<br>
+                        <br>
+                        텍스트를 확인하고 수정하세요.
+                    `;
+                    updateStatus('✅ 음성 인식 완료!', 'idle');
+                }
+            };
+            
+            // 오디오 종료 시 인식도 종료
+            uploadedAudio.onended = () => {
+                if (isRecognizing) {
+                    recognition.stop();
+                }
+            };
+            
+            // 전역 변수에 저장 (중지용)
+            window.currentRecognition = recognition;
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('인식 시작 실패:', error);
+                textEl.innerHTML = `
+                    ❌ 인식 시작 실패<br>
+                    ${error.message}<br>
+                    <br>
+                    "추정 모드"를 대신 사용하세요.
+                `;
+            }
+        }
+        
+        function stopPlayAndRecognize() {
+            if (window.currentRecognition) {
+                window.currentRecognition.stop();
+                window.currentRecognition = null;
+            }
+            if (uploadedAudio) {
+                uploadedAudio.pause();
+            }
+        }
+
+        // 오디오 분석을 통한 립싱크 추정 모드
+        async function estimateFromAudio() {
+            if (!uploadedAudio) {
+                alert('먼저 오디오 파일을 업로드해주세요!');
+                return;
+            }
+
+            const statusEl = document.getElementById('transcriptionStatus');
+            const textEl = document.getElementById('transcriptionText');
+            
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#d4edda';
+            textEl.innerHTML = '🤖 오디오 분석 중...';
+
+            try {
+                // AudioContext를 사용하여 오디오 분석
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                const response = await fetch(uploadedAudio.src);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                // 오디오 길이 기반으로 적절한 립싱크 패턴 생성
+                const duration = audioBuffer.duration;
+                const sampleRate = audioBuffer.sampleRate;
+                const channelData = audioBuffer.getChannelData(0);
+                
+                // 음량 분석하여 말하는 부분 감지
+                const chunkSize = Math.floor(sampleRate * 0.15); // 150ms 단위
+                const chunks = [];
+                
+                for (let i = 0; i < channelData.length; i += chunkSize) {
+                    const chunk = channelData.slice(i, i + chunkSize);
+                    const rms = Math.sqrt(chunk.reduce((sum, val) => sum + val * val, 0) / chunk.length);
+                    chunks.push(rms);
+                }
+                
+                // 음량 기반 자연스러운 립싱크 텍스트 생성
+                let estimatedText = '';
+                const maxVolume = Math.max(...chunks);
+                const threshold = maxVolume * 0.25; // 음량 임계값
+                
+                // 다양한 음절 패턴 (더 자연스럽게)
+                const patterns = {
+                    high: ['아', '어', '오', '우', '이', '애', '에'],      // 큰 소리 (모음 위주)
+                    medium: ['가', '나', '다', '라', '마', '바', '사',     // 중간 소리 (일반 음절)
+                             '자', '카', '타', '파', '하'],
+                    low: ['은', '는', '을', '를', '의', '에', '와']         // 작은 소리 (부드러운 음절)
+                };
+                
+                let prevLevel = 'low';
+                let sameCount = 0;
+                
+                for (let i = 0; i < chunks.length; i++) {
+                    const volume = chunks[i];
+                    let currentLevel;
+                    
+                    // 음량 레벨 결정
+                    if (volume > threshold * 2) {
+                        currentLevel = 'high';
+                    } else if (volume > threshold) {
+                        currentLevel = 'medium';
+                    } else {
+                        currentLevel = 'low';
+                    }
+                    
+                    // 같은 레벨이 3번 이상 연속되면 변화 주기
+                    if (currentLevel === prevLevel) {
+                        sameCount++;
+                        if (sameCount > 2) {
+                            // 레벨 강제 변경
+                            const levels = ['high', 'medium', 'low'];
+                            currentLevel = levels[(levels.indexOf(currentLevel) + 1) % 3];
+                            sameCount = 0;
+                        }
+                    } else {
+                        sameCount = 0;
+                    }
+                    
+                    // 음량이 낮으면 공백 추가 (쉬는 구간)
+                    if (volume < threshold * 0.5) {  // 임계값을 0.3에서 0.5로 상향 (더 자주 공백)
+                        if (estimatedText.length > 0 && 
+                            estimatedText[estimatedText.length - 1] !== ' ') {
+                            estimatedText += ' ';
+                        }
+                    } else {
+                        // 해당 레벨의 패턴에서 랜덤하게 선택
+                        const patternArray = patterns[currentLevel];
+                        const syllable = patternArray[Math.floor(Math.random() * patternArray.length)];
+                        estimatedText += syllable;
+                    }
+                    
+                    prevLevel = currentLevel;
+                }
+                
+                // 공백 정리 (연속된 공백 제거)
+                estimatedText = estimatedText.replace(/\s+/g, ' ').trim();
+                
+                // 자연스러운 구두점 추가 (공백 있는 곳에)
+                const words = estimatedText.split(' ');
+                let textWithPunctuation = '';
+                for (let i = 0; i < words.length; i++) {
+                    textWithPunctuation += words[i];
+                    
+                    // 마지막 단어가 아니면
+                    if (i < words.length - 1) {
+                        // 3-5 단어마다 쉼표, 7-10 단어마다 마침표
+                        if ((i + 1) % 7 === 0 || (i + 1) % 10 === 0) {
+                            textWithPunctuation += '. ';
+                        } else if ((i + 1) % 3 === 0 || (i + 1) % 5 === 0) {
+                            textWithPunctuation += ', ';
+                        } else {
+                            textWithPunctuation += ' ';
+                        }
+                    }
+                }
+                estimatedText = textWithPunctuation;
+                
+                // 너무 길면 적절히 줄바꿈 추가
+                if (estimatedText.length > 100) {
+                    const sentences = estimatedText.split(/\. /);
+                    let formatted = '';
+                    
+                    for (let i = 0; i < sentences.length; i++) {
+                        formatted += sentences[i];
+                        if (i < sentences.length - 1) {
+                            formatted += '.\n';  // 마침표 후 줄바꿈
+                        }
+                    }
+                    estimatedText = formatted.trim();
+                }
+                
+                // 결과를 텍스트 필드에 입력
+                document.getElementById('textInputUpload').value = estimatedText;
+                
+                textEl.innerHTML = `
+                    ✅ <strong>분석 완료!</strong><br>
+                    오디오 길이: ${duration.toFixed(2)}초<br>
+                    분석된 청크: ${chunks.length}개<br>
+                    생성된 텍스트: ${estimatedText.length}글자<br>
+                    최대 음량: ${(maxVolume * 100).toFixed(2)}%<br>
+                    <br>
+                    💡 음량 패턴을 분석하여 자연스러운 한글 음절을 생성했습니다.<br>
+                    필요시 수정하여 사용하세요!
+                `;
+                
+                console.log('오디오 분석 완료:', {
+                    길이: duration,
+                    청크수: chunks.length,
+                    텍스트길이: estimatedText.length,
+                    최대음량: maxVolume,
+                    샘플: estimatedText.substring(0, 100)
+                });
+                
+                updateStatus('✅ 오디오 분석 완료! 텍스트가 생성되었습니다.', 'idle');
+                
+            } catch (error) {
+                console.error('오디오 분석 실패:', error);
+                textEl.innerHTML = `❌ 오디오 분석 실패: ${error.message}`;
+                statusEl.style.background = '#f8d7da';
+            }
+        }
+
+        function displayPhonemeMapping() {
+            const section = document.getElementById('phonemeMappingSection');
+            section.style.display = 'block';
+            
+            displayKoreanMapping();
+            displayEnglishMapping();
+        }
+
+        function displayKoreanMapping() {
+            const mapping = document.getElementById('phonemeMappingKorean');
+            
+            const labels = {
+                'rest': '😌 쉬는 상태',
+                'a': '😮 ㅏ/ㅑ (크게)',
+                'ae': '😃 ㅐ/ㅒ (약간)',
+                'eo': '😯 ㅓ/ㅕ (중간)',
+                'e': '🙂 ㅔ/ㅖ (작게)',
+                'o': '😗 ㅗ/ㅛ (둥근)',
+                'u': '😙 ㅜ/ㅠ (우)',
+                'eu': '😬 ㅡ (으)',
+                'i': '😁 ㅣ (이)',
+                'b_p_m': '🤐 ㅂ/ㅍ/ㅁ',
+                'n': '😛 ㄴ/ㄹ',
+                's': '😬 ㅅ/ㅆ',
+                't_d': '😑 ㅌ/ㄷ',
+                'g_k': '😮 ㄱ/ㅋ',
+                'j': '😏 ㅈ/ㅊ',
+                'h': '😲 ㅎ',
+                'ng': '😮 ㅇ'
+            };
+            
+            mapping.innerHTML = '<h4>🇰🇷 한국어 발음 매핑:</h4>';
+            
+            for (let [key, label] of Object.entries(labels)) {
+                const item = document.createElement('div');
+                item.className = 'phoneme-item';
+                
+                const labelEl = document.createElement('label');
+                labelEl.textContent = label;
+                
+                const select = document.createElement('select');
+                for (let i = 0; i < mouthFrames.length; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `입모양 ${i}`;
+                    if (i === phonemeMapKorean[key]) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                }
+                select.onchange = (e) => {
+                    phonemeMapKorean[key] = parseInt(e.target.value);
+                };
+                
+                item.appendChild(labelEl);
+                item.appendChild(select);
+                mapping.appendChild(item);
+            }
+        }
+
+        function displayEnglishMapping() {
+            const mapping = document.getElementById('phonemeMappingEnglish');
+            
+            const labels = {
+                'rest': '😌 Silence',
+                'AA': '😮 AA (f a ther)',
+                'AE': '😃 AE (c a t)',
+                'AH': '😯 AH (b u t)',
+                'AO': '😗 AO (d og)',
+                'EH': '🙂 EH (b e d)',
+                'IH': '😁 IH (s i t)',
+                'IY': '😁 IY (s ee )',
+                'OW': '😗 OW (b oa t)',
+                'UH': '😙 UH (b oo k)',
+                'UW': '😙 UW (f oo d)',
+                'B': '🤐 B/P/M',
+                'F': '😬 F/V',
+                'S': '😬 S/Z',
+                'T': '😑 T/D',
+                'N': '😛 N/L',
+                'R': '😯 R',
+                'K': '😮 K/G',
+                'SH': '😏 SH/CH',
+                'H': '😲 H',
+                'W': '😙 W',
+                'Y': '😁 Y'
+            };
+            
+            mapping.innerHTML = '<h4>🇺🇸 영어 발음 매핑:</h4>';
+            
+            for (let [key, label] of Object.entries(labels)) {
+                const item = document.createElement('div');
+                item.className = 'phoneme-item';
+                
+                const labelEl = document.createElement('label');
+                labelEl.textContent = label;
+                
+                const select = document.createElement('select');
+                for (let i = 0; i < mouthFrames.length; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `Mouth ${i}`;
+                    if (i === phonemeMapEnglish[key]) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                }
+                select.onchange = (e) => {
+                    phonemeMapEnglish[key] = parseInt(e.target.value);
+                };
+                
+                item.appendChild(labelEl);
+                item.appendChild(select);
+                mapping.appendChild(item);
+            }
+        }
+
+        function drawCurrentMouth() {
+            if (mouthFrames.length === 0) {
+                const bgColor = document.getElementById('bgColor').value;
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            
+            const bgColor = document.getElementById('bgColor').value;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const frameData = mouthFrames[currentMouthIndex];
+            const frame = frameData.canvas;
+            const bounds = frameData.bounds;
+            const scale = mouthScale;
+            
+            const scaledWidth = bounds.width * scale;
+            const scaledHeight = bounds.height * scale;
+            
+            const destX = (canvas.width / 2) - (bounds.centerX * scale);
+            const destY = (canvas.height / 2) - (bounds.centerY * scale);
+            
+            ctx.drawImage(
+                frame,
+                destX,
+                destY,
+                frame.width * scale,
+                frame.height * scale
+            );
+        }
+
+        function updateMouthSize() {
+            const slider = document.getElementById('mouthSize');
+            mouthScale = parseFloat(slider.value);
+            document.getElementById('sizeValue').textContent = mouthScale.toFixed(1);
+            drawCurrentMouth();
+        }
+
+        function updateSilenceThreshold() {
+            const slider = document.getElementById('silenceThresholdSlider');
+            silenceThreshold = parseInt(slider.value);
+            document.getElementById('silenceValue').textContent = silenceThreshold;
+            console.log('무음 감지 민감도:', silenceThreshold);
+        }
+
+        function setPresetColor(color) {
+            document.getElementById('bgColor').value = color;
+            drawCurrentMouth();
+        }
+
+        function setSpeed(speed) {
+            speechRate = speed;
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        document.getElementById('bgColor').addEventListener('input', drawCurrentMouth);
+
+        function loadVoices() {
+            voices = synth.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            
+            const koreanVoices = voices.filter(v => 
+                v.lang.toLowerCase().includes('ko') || 
+                v.name.toLowerCase().includes('korean') ||
+                v.name.toLowerCase().includes('한국')
+            );
+            const englishVoices = voices.filter(v =>
+                v.lang.toLowerCase().includes('en') ||
+                v.name.toLowerCase().includes('english')
+            );
+            const otherVoices = voices.filter(v => 
+                !v.lang.toLowerCase().includes('ko') && 
+                !v.name.toLowerCase().includes('korean') &&
+                !v.name.toLowerCase().includes('한국') &&
+                !v.lang.toLowerCase().includes('en') &&
+                !v.name.toLowerCase().includes('english')
+            );
+            
+            if (koreanVoices.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = '🇰🇷 한국어 음성';
+                koreanVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.default || voice.localService) {
+                        option.textContent += ' ⭐';
+                    }
+                    group.appendChild(option);
+                });
+                voiceSelect.appendChild(group);
+                voiceSelect.value = voices.indexOf(koreanVoices[0]);
+            }
+            
+            if (englishVoices.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = '🇺🇸 영어 음성';
+                englishVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.default || voice.localService) {
+                        option.textContent += ' ⭐';
+                    }
+                    group.appendChild(option);
+                });
+                voiceSelect.appendChild(group);
+            }
+            
+            if (otherVoices.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = '🌐 기타 언어';
+                otherVoices.slice(0, 10).forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    group.appendChild(option);
+                });
+                voiceSelect.appendChild(group);
+            }
+            
+            console.log('사용 가능한 음성:', voices.length + '개');
+            console.log('한국어 음성:', koreanVoices.length + '개');
+            console.log('영어 음성:', englishVoices.length + '개');
+        }
+
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = loadVoices;
+        }
+        
+        loadVoices();
+        setTimeout(() => { if (voices.length === 0) loadVoices(); }, 1000);
+        setTimeout(() => { if (voices.length === 0) { voices = synth.getVoices(); loadVoices(); } }, 3000);
+
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            if (mouthFrames.length === 0) {
+                alert('먼저 입 모양 이미지를 업로드해주세요!');
+                return;
+            }
+            
+            try {
+                const stream = canvas.captureStream(30);
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: 8000000
+                });
+                
+                recordedChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.style.display = 'block';
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `lipsync_${Date.now()}.webm`;
+                        a.click();
+                    };
+                    
+                    updateStatus('✅ 녹화 완료! 영상을 다운로드하세요.', 'idle');
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '⏹️ 녹화 중지';
+                recordBtn.classList.add('recording');
+                
+                updateStatus('🔴 녹화 중...', 'recording');
+                
+            } catch (error) {
+                console.error('녹화 실패:', error);
+                alert('녹화를 시작할 수 없습니다.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '⏺️ 녹화 시작';
+                recordBtn.classList.remove('recording');
+            }
+        }
+
+        async function speak() {
+            if (mouthFrames.length === 0) {
+                alert('먼저 입 모양 이미지를 업로드해주세요!');
+                return;
+            }
+            
+            stop();
+
+            if (audioMode === 'upload') {
+                // 업로드된 오디오 재생
+                if (!uploadedAudio) {
+                    alert('먼저 오디오 파일을 업로드해주세요!');
+                    return;
+                }
+                
+                const text = document.getElementById('textInputUpload').value.trim();
+                
+                // 텍스트가 없어도 재생 가능 (자동 립싱크 모드)
+                if (!text) {
+                    const confirmPlay = confirm('텍스트가 없습니다.\n\n자동 립싱크 모드로 재생하시겠습니까?\n\n(음량 패턴 기반으로 입 모양이 자동으로 변경됩니다)');
+                    if (!confirmPlay) {
+                        return;
+                    }
+                }
+                
+                playUploadedAudio(text);
+            } else {
+                // TTS 음성 재생
+                const text = document.getElementById('textInput').value.trim();
+                
+                if (!text) {
+                    alert('텍스트를 입력해주세요!');
+                    return;
+                }
+
+                if (ttsEngine === 'google') {
+                    // Google Cloud TTS 사용
+                    const audioUrl = await synthesizeWithGoogleTTS(text);
+                    if (!audioUrl) {
+                        return; // 오류 발생 시 중단
+                    }
+                    
+                    // 생성된 오디오를 Audio 객체로 재생
+                    const audio = new Audio(audioUrl);
+                    
+                    audio.onloadedmetadata = () => {
+                        const duration = audio.duration;
+                        console.log('Google TTS 오디오 길이:', duration);
+                        
+                        isSpeaking = true;
+                        updateStatus('🗣️ Google TTS 재생 중...', 'speaking');
+                        document.getElementById('speakBtn').disabled = true;
+                        document.getElementById('stopBtn').disabled = false;
+                        
+                        // 오디오 컨텍스트 설정 (무음 감지용)
+                        setupAudioContext(audio);
+                        
+                        // 텍스트 기반 립싱크 + 무음 감지
+                        animateLipSyncWithAudioAndSilence(text, duration);
+                    };
+                    
+                    audio.onended = () => {
+                        console.log('Google TTS 재생 완료');
+                        isSpeaking = false;
+                        stopAudioAnalysis();
+                        setTimeout(() => {
+                            stop();
+                            if (isRecording) {
+                                setTimeout(() => stopRecording(), 500);
+                            }
+                        }, 300);
+                    };
+                    
+                    audio.onerror = (e) => {
+                        console.error('오디오 재생 오류:', e);
+                        stop();
+                        alert('오디오 재생 중 오류가 발생했습니다.');
+                    };
+                    
+                    audio.play().catch(err => {
+                        console.error('재생 실패:', err);
+                        alert('오디오 재생 실패: ' + err.message);
+                        stop();
+                    });
+                    
+                } else {
+                    // 브라우저 내장 TTS 사용
+                    if (voices.length === 0) {
+                        voices = synth.getVoices();
+                    }
+
+                    utterance = new SpeechSynthesisUtterance(text);
+                    
+                    const detectedLang = detectLanguage(text);
+                    console.log('감지된 언어:', detectedLang);
+                    
+                    const selectedVoiceIndex = document.getElementById('voiceSelect').value;
+                    if (selectedVoiceIndex !== '' && voices[selectedVoiceIndex]) {
+                        utterance.voice = voices[selectedVoiceIndex];
+                        console.log('사용 중인 음성:', voices[selectedVoiceIndex].name);
+                    } else {
+                        if (detectedLang === 'korean') {
+                            const koreanVoice = voices.find(v => 
+                                v.lang.toLowerCase().includes('ko') || 
+                                v.name.toLowerCase().includes('korean')
+                            );
+                            if (koreanVoice) {
+                                utterance.voice = koreanVoice;
+                                utterance.lang = 'ko-KR';
+                            }
+                        } else {
+                            const englishVoice = voices.find(v =>
+                                v.lang.toLowerCase().includes('en')
+                            );
+                            if (englishVoice) {
+                                utterance.voice = englishVoice;
+                                utterance.lang = 'en-US';
+                            }
+                        }
+                    }
+                    
+                    utterance.rate = speechRate;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+
+                    utterance.onstart = () => {
+                        isSpeaking = true;
+                        updateStatus('🗣️ 말하는 중...', 'speaking');
+                        document.getElementById('speakBtn').disabled = true;
+                        document.getElementById('stopBtn').disabled = false;
+                        
+                        console.log('TTS 시작:', {
+                            text: text.substring(0, 30) + '...',
+                            voice: utterance.voice ? utterance.voice.name : '기본',
+                            lang: utterance.lang,
+                            rate: utterance.rate,
+                            detected: detectedLang
+                        });
+                        
+                        animateLipSync(text);
+                    };
+
+                    utterance.onend = () => {
+                        console.log('TTS 완료');
+                        isSpeaking = false;
+                        setTimeout(() => {
+                            stop();
+                            if (isRecording) {
+                                setTimeout(() => stopRecording(), 500);
+                            }
+                        }, 300);
+                    };
+
+                    utterance.onerror = (event) => {
+                        console.error('TTS 오류:', event);
+                        stop();
+                        alert('음성 재생 중 오류가 발생했습니다.');
+                    };
+
+                    try {
+                        synth.speak(utterance);
+                        console.log('synth.speak() 호출 완료');
+                    } catch (e) {
+                        console.error('synth.speak() 오류:', e);
+                        alert('음성 재생을 시작할 수 없습니다: ' + e.message);
+                        stop();
+                    }
+                }
+            }
+        }
+
+        function playUploadedAudio(text) {
+            isSpeaking = true;
+            updateStatus('🎵 오디오 재생 중...', 'speaking');
+            document.getElementById('speakBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            // 오디오 재생
+            uploadedAudio.currentTime = 0;
+            uploadedAudio.playbackRate = speechRate;
+            
+            // 오디오 컨텍스트 초기화
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            // 오디오 소스와 분석기 설정 (한 번만 생성)
+            if (!audioSource) {
+                try {
+                    audioSource = audioContext.createMediaElementSource(uploadedAudio);
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 256;
+                    analyser.smoothingTimeConstant = 0.8;
+                    
+                    audioSource.connect(analyser);
+                    analyser.connect(audioContext.destination);
+                    
+                    console.log('✅ 오디오 분석기 연결 완료 (재생 중인 오디오 분석)');
+                } catch (e) {
+                    console.error('오디오 소스 생성 오류:', e);
+                    // 이미 생성된 경우 무시하고 계속 진행
+                }
+            }
+            
+            const playPromise = uploadedAudio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('오디오 재생 시작');
+                    
+                    // 텍스트가 있으면 텍스트 기반 립싱크 + 실시간 음량 감지
+                    if (text && text.trim()) {
+                        animateLipSyncWithAudioAndSilence(text, uploadedAudio.duration);
+                    } else {
+                        // 텍스트 없으면 음량만으로 립싱크
+                        animateWithAudioAnalysis();
+                    }
+                    
+                }).catch(error => {
+                    console.error('오디오 재생 실패:', error);
+                    alert('오디오를 재생할 수 없습니다.');
+                    stop();
+                });
+            }
+            
+            // 오디오 종료 이벤트
+            uploadedAudio.onended = () => {
+                console.log('오디오 재생 완료');
+                stopAudioAnalysis();
+                isSpeaking = false;
+                setTimeout(() => {
+                    stop();
+                    if (isRecording) {
+                        setTimeout(() => stopRecording(), 500);
+                    }
+                }, 300);
+            };
+            
+            uploadedAudio.onerror = (e) => {
+                console.error('오디오 재생 오류:', e);
+                stopAudioAnalysis();
+                stop();
+                alert('오디오 재생 중 오류가 발생했습니다.');
+            };
+        }
+
+        // 실시간 오디오 분석으로 립싱크 (텍스트 없을 때)
+        function animateWithAudioAnalysis() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            function analyzeFrame() {
+                if (!isSpeaking || !analyser) return;
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                // 평균 음량 계산
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                
+                // 음량에 따라 입 모양 결정
+                if (average > silenceThreshold) {
+                    // 소리 있음 - 랜덤하게 모음 입 모양
+                    const vowelIndices = [4, 5, 6, 7, 8, 9, 10, 11]; // 모음 인덱스들
+                    const randomIndex = vowelIndices[Math.floor(Math.random() * vowelIndices.length)];
+                    currentMouthIndex = randomIndex;
+                    lastSoundTime = Date.now();
+                } else {
+                    // 무음 - 입 닫기
+                    if (Date.now() - lastSoundTime > silenceDelay) {
+                        currentMouthIndex = phonemeMapKorean['rest'];
+                    }
+                }
+                
+                drawCurrentMouth();
+                
+                audioMonitorInterval = requestAnimationFrame(analyzeFrame);
+            }
+            
+            console.log('실시간 오디오 분석 시작 (무음 감지 활성화)');
+            analyzeFrame();
+        }
+
+        // 텍스트 기반 립싱크 + 실시간 무음 감지 결합
+        function animateLipSyncWithAudioAndSilence(text, audioDuration) {
+            const phonemeSequence = textToPhonemes(text);
+            
+            // 오디오 길이에 맞춰 각 발음의 duration 조정
+            const totalTextDuration = phonemeSequence.reduce((sum, p) => sum + p.duration, 0);
+            const scaleFactor = (audioDuration * 1000) / totalTextDuration;
+            
+            phonemeSequence.forEach(p => {
+                p.duration *= scaleFactor;
+            });
+            
+            // 연속된 같은 발음 합치기
+            const optimizedSequence = [];
+            for (let i = 0; i < phonemeSequence.length; i++) {
+                const current = phonemeSequence[i];
+                let combinedDuration = current.duration;
+                let j = i + 1;
+                
+                while (j < phonemeSequence.length &&
+                       phonemeSequence[j].phoneme === current.phoneme &&
+                       phonemeSequence[j].map === current.map) {
+                    combinedDuration += phonemeSequence[j].duration;
+                    j++;
+                }
+                
+                optimizedSequence.push({
+                    phoneme: current.phoneme,
+                    duration: combinedDuration,
+                    map: current.map
+                });
+                
+                i = j - 1;
+            }
+            
+            console.log('립싱크 최적화 (무음 감지 포함):', {
+                원본발음수: phonemeSequence.length,
+                최적화후: optimizedSequence.length,
+                무음감지: '활성화'
+            });
+            
+            let index = 0;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            function nextPhoneme() {
+                if (!isSpeaking) {
+                    currentMouthIndex = phonemeMapKorean['rest'];
+                    drawCurrentMouth();
+                    return;
+                }
+                
+                // 실시간 음량 분석
+                if (analyser) {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    const average = sum / bufferLength;
+                    
+                    // 무음 감지 - 음량이 낮으면 입 닫기
+                    if (average < silenceThreshold) {
+                        if (Date.now() - lastSoundTime > silenceDelay) {
+                            currentMouthIndex = phonemeMapKorean['rest'];
+                            drawCurrentMouth();
+                            animationInterval = setTimeout(nextPhoneme, 50);
+                            return;
+                        }
+                    } else {
+                        lastSoundTime = Date.now();
+                    }
+                }
+                
+                // 텍스트 기반 립싱크
+                if (index < optimizedSequence.length) {
+                    const { phoneme, duration, map } = optimizedSequence[index];
+                    currentMouthIndex = map[phoneme] || map['rest'];
+                    drawCurrentMouth();
+                    index++;
+                    animationInterval = setTimeout(nextPhoneme, duration);
+                } else {
+                    currentMouthIndex = phonemeMapKorean['rest'];
+                    drawCurrentMouth();
+                }
+            }
+            
+            console.log('립싱크 시작 (텍스트 + 무음감지)');
+            nextPhoneme();
+        }
+
+        function stopAudioAnalysis() {
+            if (audioMonitorInterval) {
+                cancelAnimationFrame(audioMonitorInterval);
+                audioMonitorInterval = null;
+            }
+            analyser = null;
+        }
+
+        // 텍스트 없이 자동으로 립싱크 (입 닫힌 상태 유지)
+        function animateAutoLipSync(audioDuration) {
+            console.log('텍스트 없음 - 입 닫힌 상태 유지');
+            
+            // 입을 닫힌 상태로 유지
+            currentMouthIndex = phonemeMapKorean['rest'];
+            drawCurrentMouth();
+            
+            console.log('오디오만 재생 중:', {
+                오디오길이: audioDuration.toFixed(2) + '초',
+                립싱크: '비활성 (텍스트 입력 시 활성화)'
+            });
+        }
+
+        function animateLipSyncWithAudio(text, audioDuration) {
+            const phonemeSequence = textToPhonemes(text);
+            
+            // 오디오 길이에 맞춰 각 발음의 duration 조정
+            const totalTextDuration = phonemeSequence.reduce((sum, p) => sum + p.duration, 0);
+            const scaleFactor = (audioDuration * 1000) / totalTextDuration; // 밀리초로 변환
+            
+            phonemeSequence.forEach(p => {
+                p.duration *= scaleFactor;
+            });
+            
+            // 연속된 같은 발음을 미리 합치기 (최적화)
+            const optimizedSequence = [];
+            for (let i = 0; i < phonemeSequence.length; i++) {
+                const current = phonemeSequence[i];
+                
+                // 같은 발음이 연속되는지 확인
+                let combinedDuration = current.duration;
+                let j = i + 1;
+                
+                while (j < phonemeSequence.length &&
+                       phonemeSequence[j].phoneme === current.phoneme &&
+                       phonemeSequence[j].map === current.map) {
+                    combinedDuration += phonemeSequence[j].duration;
+                    j++;
+                }
+                
+                // 합쳐진 발음 추가
+                optimizedSequence.push({
+                    phoneme: current.phoneme,
+                    duration: combinedDuration,
+                    map: current.map
+                });
+                
+                // 다음 인덱스로 점프
+                i = j - 1;
+            }
+            
+            console.log('립싱크 최적화:', {
+                원본발음수: phonemeSequence.length,
+                최적화후: optimizedSequence.length,
+                감소율: ((1 - optimizedSequence.length / phonemeSequence.length) * 100).toFixed(1) + '%'
+            });
+            
+            let index = 0;
+            
+            function nextPhoneme() {
+                if (!isSpeaking || index >= optimizedSequence.length) {
+                    currentMouthIndex = phonemeMapKorean['rest'];
+                    drawCurrentMouth();
+                    return;
+                }
+                
+                const { phoneme, duration, map } = optimizedSequence[index];
+                currentMouthIndex = map[phoneme] || map['rest'];
+                drawCurrentMouth();
+                
+                index++;
+                animationInterval = setTimeout(nextPhoneme, duration);
+            }
+            
+            console.log('립싱크 시작 (오디오 동기화):', {
+                오디오길이: audioDuration.toFixed(2) + '초',
+                발음개수: optimizedSequence.length,
+                스케일: scaleFactor.toFixed(2)
+            });
+            
+            nextPhoneme();
+        }
+
+        function stop() {
+            synth.cancel();
+            
+            // 업로드된 오디오 정지
+            if (uploadedAudio) {
+                uploadedAudio.pause();
+                uploadedAudio.currentTime = 0;
+            }
+            
+            // 오디오 분석 중지
+            stopAudioAnalysis();
+            
+            isSpeaking = false;
+            
+            if (animationInterval) {
+                clearTimeout(animationInterval);
+                animationInterval = null;
+            }
+            
+            currentMouthIndex = phonemeMapKorean['rest'];
+            drawCurrentMouth();
+            
+            updateStatus('대기 중...', 'idle');
+            document.getElementById('speakBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        function updateStatus(message, className) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${className}`;
+        }
+
+        document.getElementById('textInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                speak();
+            }
+        });
+
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    </script>
+</body>
+</html>
